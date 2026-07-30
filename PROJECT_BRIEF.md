@@ -8,13 +8,10 @@ This app is going to replace a pen and paper register, each evening a teacher re
 to her
 
 ##  Structure of the center
-1. There are two batches of students, defined by time 6 to 8 pm and 8 to 10 pm, each batch runs two slots, slot 1 and slot 2
 
-2. Each teacher is assigned a set of students who may come from either batch. Batch and teacher are independent, a student has exactly one teacher and exactly one batch.
+- Teachers are assigned students to record their attendance their marks and the topics that they convered in their two study slots and are can also record the student's remarks or can record any comments on that student's behaviour that day.
 
-3. Concequence of point 2, both teachers may have students in the same batch. Therefore slot topics and test details belong to the teacher, not to the batch, each teacher records what her own student covered. Tow teachers may record different topics for the same batch on the same date, and that is correct not a conflict.
-
-4. Concsequence of point 2, holiday/ no-class status belongs to the batch, not to the teacher, a cancelled 6 to 8 class affects both teachers' students in that batch ans must be recorded once, shared.
+- There are two teachers looking after the students and performing these actions, Sahithi and Nithya, Sahithi would have the admin account
 
 ## 2. Tech Stack
 
