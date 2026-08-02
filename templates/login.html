@@ -1,0 +1,33 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1rem; max-width: 22rem; }
+  .profiles { display: flex; gap: .5rem; margin-bottom: .75rem; }
+  .profiles label { flex: 1; text-align: center; min-height: 40px; line-height: 40px;
+                    background: #ddd; border: 1px solid #bbb; border-radius: 4px;
+                    cursor: pointer; }
+  /* Off-screen rather than display:none, so the radio stays keyboard-reachable
+     and announced by screen readers. */
+  .profiles input { position: absolute; opacity: 0; }
+  .profiles label:has(input:checked) { background: #2e7d32; color: #fff; }
+  .profiles label:has(input:focus-visible) { outline: 2px solid #2e7d32; }
+  #password { width: 100%; box-sizing: border-box; min-height: 40px;
+              padding: 0 .5rem; margin-bottom: .75rem; font-size: 1rem; }
+  #signin { width: 100%; min-height: 40px; font-size: 1rem;
+            background: #ddd; border: 1px solid #bbb; border-radius: 4px; }
+  .error { color: #c62828; }
+</style>
+
+<h1>HR Academy</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" action="/login">
+  {# Radios, not submit buttons. Two submit buttons gave the form a default one,
+     so pressing Enter silently signed in as whoever came first in the markup. #}
+  <div class="profiles">
+    <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
+    <label><input type="radio" name="username" value="nithya" required>Nithya</label>
+  </div>
+  <input id="password" type="password" name="password" placeholder="Password" required>
+  <button id="signin" type="submit">Sign in</button>
+</form>

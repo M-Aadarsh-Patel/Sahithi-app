@@ -1,4 +1,5 @@
 fastapi
+itsdangerous
 jinja2
 pymongo
 python-dotenv
