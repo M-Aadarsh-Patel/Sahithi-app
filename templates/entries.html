@@ -4,6 +4,11 @@
 <script src="https://unpkg.com/htmx.org@2.0.10/dist/htmx.min.js"></script>
 <style>
   body { font-family: system-ui, sans-serif; margin: 1rem; }
+  .datebar { display: flex; align-items: center; gap: .75rem;
+             width: 100%; margin-bottom: .5rem; }
+  .datebar .current { font-weight: bold; }
+  .datebar .today { color: #2e7d32; }
+  #picker { margin-left: auto; min-height: 40px; }
   #search { width: 100%; box-sizing: border-box; min-height: 40px;
             padding: 0 .5rem; margin-bottom: .5rem; }
   ul { list-style: none; padding: 0; }
@@ -24,7 +29,14 @@
   .row.failed .retry { display: inline-block; }
 </style>
 
-<h1>{{ date }}</h1>
+<div class="datebar">
+  <a href="/entries/{{ prev_date }}">‹ prev</a>
+  <span class="current">{{ formatted }}</span>
+  {% if date == today %}<span class="today">today</span>{% endif %}
+  {# No "next" on today. §4.2 blocks the future, so the link would only 400. #}
+  {% if next_date <= today %}<a href="/entries/{{ next_date }}">next ›</a>{% endif %}
+  <input type="date" id="picker" value="{{ date }}" max="{{ today }}">
+</div>
 <input id="search" type="search" placeholder="Search name or roll number">
 <ul>
   {% for student in students %}
@@ -49,6 +61,11 @@
   }
   document.body.addEventListener("htmx:responseError", markFailed);
   document.body.addEventListener("htmx:sendError", markFailed);
+
+  // The picker is a plain navigation control: pick a day, load that day.
+  document.getElementById("picker").addEventListener("change", (event) => {
+    if (event.target.value) location.assign("/entries/" + event.target.value);
+  });
 
   // The rows are already in the DOM, so filtering is just hiding. An empty box
   // matches everything, because every string contains "".

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from bson import ObjectId
@@ -18,6 +18,25 @@ templates = Jinja2Templates(directory="templates")
 TEACHER_ID = ObjectId("6a6e1a8cb67feefbf03c2404")  # Sahithi
 
 
+def parse_date(date):
+    """A date string from the URL, as a real date. Rejects anything unusable.
+
+    Only the canonical "YYYY-MM-DD" spelling passes. strptime on its own also
+    accepts "2026-7-2", and entries are keyed by this exact string — a second
+    spelling of the same day would quietly key a second document.
+    """
+    try:
+        day = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        day = None
+    if day is None or day.isoformat() != date:
+        raise HTTPException(status_code=400, detail="Date must be YYYY-MM-DD")
+    # Both sides are canonical ISO now, so comparing strings compares dates.
+    if date > today_ist():  # §4.2 — future is blocked for everyone
+        raise HTTPException(status_code=400, detail="That date is in the future")
+    return day
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -31,6 +50,7 @@ def entries_today():
 
 @app.get("/entries/{date}")
 def entries(request: Request, date: str):
+    day = parse_date(date)
     students = list(db.students.find({"teacher_id": TEACHER_ID, "is_active": True}).sort("roll_no"))
     # One extra query, not one per row. A student with no document here is simply
     # missing from the map, which is what renders the row grey.
@@ -39,7 +59,15 @@ def entries(request: Request, date: str):
     return templates.TemplateResponse(
         request,
         "entries.html",
-        {"date": date, "students": students, "status_by_id": status_by_id},
+        {
+            "date": date,
+            "formatted": day.strftime("%a %d %b"),
+            "prev_date": (day - timedelta(days=1)).isoformat(),
+            "next_date": (day + timedelta(days=1)).isoformat(),
+            "today": today_ist(),
+            "students": students,
+            "status_by_id": status_by_id,
+        },
     )
 
 
@@ -53,6 +81,10 @@ def save_entry(
     # not a third status, so there is no value here that means "not marked".
     status: Annotated[Literal["present", "absent"], Form()],
 ):
+    # Guard only — the write keys off the raw string. Runs before the student
+    # lookup so a bad date costs no query.
+    parse_date(date)
+
     student = (
         db.students.find_one({"_id": ObjectId(student_id)})
         if ObjectId.is_valid(student_id)
