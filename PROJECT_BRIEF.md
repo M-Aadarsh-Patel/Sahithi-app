@@ -304,7 +304,7 @@ Step 5 exists because a student who has quietly stopped attending but hasn't bee
  
 ## 8. Build phases
  
-### v0.5 — Saturday 1 August
+### v0.5 - completed
  
 1. `students` collection + seed script with **real Telugu names and real roll numbers**
 2. `GET /entries/{date}` — student list, unstyled HTML
@@ -318,7 +318,7 @@ Item 8 is what makes the rest fit. With no past-date editing there is no overrid
  
 **This is a usable app.** A teacher can replace her register with it on Monday. That is the only bar that matters.
  
-### v1 — week two
+### v1
  
 Calendar with colour coding · onboarding form · student detail and stats · edit/deactivate · admin roster (§5.7) · test scores · CSV export · holiday marking · audit log · supervisor override · backfill rules · real auth with bcrypt · slot topics (last)
  
@@ -334,7 +334,7 @@ Do not build "the backend" then "the frontend." Build one feature all the way th
  
 When that works, the app exists. Everything after is repetition of a proven pattern.
  
-## 10. Acceptance checks - for Aadarsh
+## 10. Acceptance checks
  
 Run manually. Tick them off on paper.
  
