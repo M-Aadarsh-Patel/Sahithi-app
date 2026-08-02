@@ -93,6 +93,7 @@ def seed(rows):
     db.users.create_index("username", unique=True)
     db.students.create_index("roll_no", unique=True)
     db.students.create_index([("teacher_id", 1), ("is_active", 1)])
+    db.entries.create_index([("student_id", 1), ("date", 1)], unique=True)
 
     teacher_ids = {}
     for user in USERS:
