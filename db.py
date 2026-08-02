@@ -1,4 +1,6 @@
 import os
+from typing import Any
+
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
@@ -10,7 +12,7 @@ if not MONGO_URI:
 
 # One client per process. MongoClient is thread-safe and owns its own connection
 # pool, so it is built once at import and shared, never per request.
-client = MongoClient(MONGO_URI)
+client: MongoClient[dict[str, Any]] = MongoClient(MONGO_URI)
 
 # Uses the database named in the URI; falls back to "hr_academy" if it has none.
 db = client.get_default_database("hr_academy")

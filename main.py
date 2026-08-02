@@ -1,11 +1,11 @@
 import os
 import secrets
-from datetime import datetime, timedelta
-from typing import Annotated, Literal
+from datetime import date, datetime, timedelta
+from typing import Annotated, Any, Literal
 
 from bson import ObjectId
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -25,26 +25,27 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, max_age=12 * 60
 templates = Jinja2Templates(directory="templates")
 
 
-def parse_date(date):
+def parse_date(raw: str) -> date:
     """A date string from the URL, as a real date. Rejects anything unusable.
 
     Only the canonical "YYYY-MM-DD" spelling passes. strptime on its own also
     accepts "2026-7-2", and entries are keyed by this exact string — a second
     spelling of the same day would quietly key a second document.
     """
+    day: date | None
     try:
-        day = datetime.strptime(date, "%Y-%m-%d").date()
+        day = datetime.strptime(raw, "%Y-%m-%d").date()
     except ValueError:
         day = None
-    if day is None or day.isoformat() != date:
+    if day is None or day.isoformat() != raw:
         raise HTTPException(status_code=400, detail="Date must be YYYY-MM-DD")
     # Both sides are canonical ISO now, so comparing strings compares dates.
-    if date > today_ist():  # §4.2 — future is blocked for everyone
+    if raw > today_ist():  # §4.2 — future is blocked for everyone
         raise HTTPException(status_code=400, detail="That date is in the future")
     return day
 
 
-def current_user(request: Request):
+def current_user(request: Request) -> dict[str, Any]:
     """The logged-in user, or a redirect to /login.
 
     303 rather than 307 so the browser retries as a GET — a 307 would re-send a
@@ -59,12 +60,12 @@ def current_user(request: Request):
 
 
 @app.get("/health")
-def health():
+def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.get("/login")
-def login_form(request: Request):
+def login_form(request: Request) -> Response:
     return templates.TemplateResponse(request, "login.html", {})
 
 
@@ -73,7 +74,7 @@ def login(
     request: Request,
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
-):
+) -> Response:
     user = db.users.find_one({"username": username, "is_active": True})
     expected = os.environ.get(f"{username.upper()}_PASSWORD", "")
     # compare_digest is constant time, where == returns early on the first wrong
@@ -92,13 +93,15 @@ def login(
 
 
 @app.get("/entries")
-def entries_today():
+def entries_today() -> RedirectResponse:
     """Bare /entries lands on today, so the URL always names the date being written to."""
     return RedirectResponse(f"/entries/{today_ist()}")
 
 
 @app.get("/entries/{date}")
-def entries(request: Request, date: str, user: Annotated[dict, Depends(current_user)]):
+def entries(
+    request: Request, date: str, user: Annotated[dict[str, Any], Depends(current_user)]
+) -> Response:
     day = parse_date(date)
     students = list(db.students.find({"teacher_id": user["_id"], "is_active": True}).sort("roll_no"))
     # One extra query, not one per row. A student with no document here is simply
@@ -123,14 +126,14 @@ def entries(request: Request, date: str, user: Annotated[dict, Depends(current_u
 @app.post("/entries")
 def save_entry(
     request: Request,
-    user: Annotated[dict, Depends(current_user)],
+    user: Annotated[dict[str, Any], Depends(current_user)],
     student_id: Annotated[str, Form()],
     date: Annotated[str, Form()],
     # Literal rejects anything that is not exactly one of these two, with a 422,
     # before the handler body runs. §3.4: unmarked is the absence of a document,
     # not a third status, so there is no value here that means "not marked".
     status: Annotated[Literal["present", "absent"], Form()],
-):
+) -> Response:
     # Guard only — the write keys off the raw string. Runs before the student
     # lookup so a bad date costs no query.
     parse_date(date)

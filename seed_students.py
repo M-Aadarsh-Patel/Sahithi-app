@@ -10,12 +10,13 @@ laptop instead of half-way through writing to Atlas.
 import csv
 import sys
 from datetime import datetime
+from typing import Any
 
 from ist import IST
 
 # §3.1 — exactly two. Passwords live in env vars, not the database, so these
 # documents carry no password field.
-USERS = [
+USERS: list[dict[str, str]] = [
     {"name": "Sahithi", "username": "sahithi", "role": "admin"},
     {"name": "Nithya", "username": "nithya", "role": "teacher"},
 ]
@@ -25,17 +26,17 @@ SLOTS = {"6-9", "7-10"}  # §3.2
 REQUIRED = ("roll_no", "name", "teacher", "slot", "enrollment_date")
 
 
-def validate(rows):
+def validate(rows: list[dict[str, str]]) -> list[str]:
     """Every problem in the batch as readable lines. Empty list means safe to write.
 
     Collects all problems rather than dying on the first one: fixing a CSV at one
     error per run is what makes people give up and hand-edit the database instead.
     """
-    problems = []
-    first_seen = {}
+    problems: list[str] = []
+    first_seen: dict[str, int] = {}
 
     for line, row in enumerate(rows, start=2):  # line 1 is the CSV header
-        def field(name):
+        def field(name: str) -> str:
             return (row.get(name) or "").strip()
 
         for name in REQUIRED:
@@ -80,7 +81,7 @@ def validate(rows):
     return problems
 
 
-def seed(rows):
+def seed(rows: list[dict[str, str]]) -> None:
     # Imported here rather than at module top: db.py opens the connection on
     # import, and the point of this script is that validation happens first.
     from pymongo import ReturnDocument
@@ -95,7 +96,7 @@ def seed(rows):
     db.students.create_index([("teacher_id", 1), ("is_active", 1)])
     db.entries.create_index([("student_id", 1), ("date", 1)], unique=True)
 
-    teacher_ids = {}
+    teacher_ids: dict[str, Any] = {}
     for user in USERS:
         doc = db.users.find_one_and_update(
             {"username": user["username"]},
@@ -106,6 +107,9 @@ def seed(rows):
             upsert=True,
             return_document=ReturnDocument.AFTER,
         )
+        # upsert=True with ReturnDocument.AFTER always returns a document;
+        # the narrowing is for the type checker, not a real branch.
+        assert doc is not None
         teacher_ids[user["name"]] = doc["_id"]
 
     inserted = updated = 0
@@ -144,8 +148,8 @@ def seed(rows):
     print(f"students: {inserted} inserted, {updated} updated")
 
 
-def _self_check():
-    good = {
+def _self_check() -> None:
+    good: dict[str, str] = {
         "roll_no": "R001",
         "name": "Aditya Reddy",
         "teacher": "Sahithi",
@@ -163,14 +167,16 @@ def _self_check():
     print("validate(): all checks pass")
 
 
-def main():
+def main() -> None:
     if "--check" in sys.argv:
         _self_check()
         return
 
     path = sys.argv[1] if len(sys.argv) > 1 else "students.csv"
     with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+        # DictReader is typed as dict[str | Any, str | Any]; the header row is
+        # plain strings, so pin it to what it actually is.
+        rows: list[dict[str, str]] = [dict(row) for row in csv.DictReader(f)]
 
     problems = validate(rows)
     if problems:
