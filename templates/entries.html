@@ -4,9 +4,14 @@
 <script src="https://unpkg.com/htmx.org@2.0.10/dist/htmx.min.js"></script>
 <style>
   body { font-family: system-ui, sans-serif; margin: 1rem; }
+  #search { width: 100%; box-sizing: border-box; min-height: 40px;
+            padding: 0 .5rem; margin-bottom: .5rem; }
   ul { list-style: none; padding: 0; }
   .row { display: flex; align-items: center; gap: .5rem;
          padding: .3rem; border: 2px solid transparent; }
+  /* .row sets display:flex, which would otherwise beat the browser's own
+     [hidden] { display: none } and leave hidden rows on screen. */
+  .row[hidden] { display: none; }
   .roll { font-family: monospace; color: #666; margin-right: auto; }
   button { min-height: 40px; padding: 0 .8rem;          /* §5.3 tap target */
            background: #ddd; border: 1px solid #bbb; border-radius: 4px; }
@@ -20,6 +25,7 @@
 </style>
 
 <h1>{{ date }}</h1>
+<input id="search" type="search" placeholder="Search name or roll number">
 <ul>
   {% for student in students %}
     {% with status = status_by_id.get(student._id) %}
@@ -43,4 +49,15 @@
   }
   document.body.addEventListener("htmx:responseError", markFailed);
   document.body.addEventListener("htmx:sendError", markFailed);
+
+  // The rows are already in the DOM, so filtering is just hiding. An empty box
+  // matches everything, because every string contains "".
+  document.getElementById("search").addEventListener("input", (event) => {
+    const query = event.target.value.trim().toLowerCase();
+    for (const row of document.querySelectorAll(".row")) {
+      const haystack = row.querySelector(".name").textContent + " " +
+                       row.querySelector(".roll").textContent;
+      row.hidden = !haystack.toLowerCase().includes(query);
+    }
+  });
 </script>
