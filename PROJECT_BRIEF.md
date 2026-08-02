@@ -2,17 +2,56 @@
  
 There are 2 users that are going to be using this program for now
 2 Teachers: Sahithi (teacher, admin), Nithya (teacher)
-We need to design the system to store the data of 100 students
+There are **40 students** in total.
  
 This app is going to replace a pen and paper register, each evening a teacher records, for every student assigned
 to her
+
+---
+
+## 0. CURRENT STATE — read this first
+
+**The app is built and running locally. Do not start from scratch.** Files: `main.py`, `db.py`, `ist.py`, `seed_students.py`, `templates/entries.html`, `templates/row.html`, `templates/login.html`.
+
+**Working and verified:**
+
+- `GET /health` → `{"status": "ok"}`, no session required
+- `GET /entries` → 303 to `/entries/{today_ist()}`
+- `GET /entries/{date}` → that teacher's students, sorted by `roll_no`, each row rendered in its saved state
+- `POST /entries` → upserts one document per student per date. Unique compound index on `(student_id, date)` enforces it at the database, verified under 8 concurrent conflicting writes
+- HTMX per-row auto-save, three toggle states (grey / green / red), save tick, red border + retry on failure
+- Client-side search filtering by name or roll number
+- Date navigator: prev / next / native date picker. No "next" link on today
+- `parse_date()` rejects non-canonical dates (`2026-7-2`) and future dates with 400
+- Session auth via `SessionMiddleware`, `httponly`, 12-hour expiry, `secrets.compare_digest`, one generic failure message
+- `GET /logout`
+- `today_ist()` in `ist.py`, used everywhere. Verified against a UTC host
+
+**Built but NOT yet done:**
+
+| Gap | Note |
+|---|---|
+| **bcrypt** | Passwords are plaintext in env vars (`SAHITHI_PASSWORD`, `NITHYA_PASSWORD`) compared with `compare_digest`. §3.1's `password_hash` field does not exist on the user documents yet. |
+| **Past-date locking** | §4.2 is entirely unimplemented. Any date up to today is currently editable by anyone logged in. No override, no audit log. |
+| **slot_1 / slot_2 / remark** | Not on the row yet. These are the fields that make the app actually replace the register — build them first. |
+| **Render deploy** | Not yet live. |
+| **Real roster** | Currently 40 placeholder students. Real CSV pending. |
+| **Styling** | Unstyled HTML. Desktop-shaped. Must be mobile-first before handover. |
+
+**Decisions that must not regress:**
+
+- The login form uses **radio inputs plus one submit button**, never two submit buttons with `name="username"`. Two submit buttons means pressing Enter submits the form's *default* button — the first in tree order — so one account becomes unreachable by keyboard and the other works by accident. This was a real bug.
+- `students.csv` is in `.gitignore`. It holds children's names and parent phone numbers.
+- Verify every step against **Atlas**, not just the browser. The UI can look correct while the database fills with garbage.
+
+---
  
 ##  Structure of the center
  
 - Teachers are assigned students to record their attendance their marks and the topics that they convered in their two study slots and are can also record the student's remarks or can record any comments on that student's behaviour that day.
 - There are two teachers looking after the students and performing these actions, Sahithi and Nithya, Sahithi would have the admin account
 ## 2. Tech Stack
- 
+
 - **Backend:** FastAPI + Jinja2 templates
 - **Interactivity:** HTMX (per-row auto-save)
 - **CSS:** Tailwind via CDN
@@ -46,11 +85,19 @@ Seed exactly two: Sahithi (`admin`), Nithya (`teacher`).
  
 ```
 _id
-roll_no           unique string, e.g. "R014"
+roll_no           → unique string, e.g. "R014"
 name
+class             → the grade the sudent is currently in right now.
 teacher_id        → users._id. assignment. changeable.
-slot              "6-9" | "7-10". display only. never groups anything.
+slot              free-text string, e.g. "6-9". The time the student attends.
+                  display only. never groups anything. NOT an enum — the real
+                  roster may hold more than two distinct timings.
 enrollment_date   IST string. drives the attendance denominator.
+                  The centre has no record of when students joined, so every
+                  seeded student gets the same term-start date. This is
+                  deliberate: it means "we started tracking here", and it is
+                  honest. Do not use today's date — that makes every student
+                  read 0/0 forever.
 is_active         bool, default true
 deactivated_at    IST string or null. set when is_active flips to false.
 parent_phone      optional
@@ -93,6 +140,8 @@ updated_at
 > **Unmarked is the absence of a document, not a third status.** Never write a document for an unmarked student. Grey in the UI means "no document exists."
  
 > slot_1 and slot_2 are entered by the users these are just the topics that the students have read in both of the slots
+
+> **Do not confuse `entries.slot_1` / `slot_2` with `students.slot`.** They are unrelated despite the names. `students.slot` is the *time* the student attends, set once at onboarding. `entries.slot_1` and `slot_2` are the *topics* covered, typed nightly by the teacher.
  
 > **Per student, deliberately.** Students read different material in the same room, so a shared per-date topic field would be wrong most evenings. This is accepted as a typing cost for now; after a week of real use the teachers will say whether they want it, and that feedback decides whether it stays per student, moves per date, or gains a copy-from-previous-row helper.
  
@@ -266,6 +315,20 @@ Colours are computed against **that teacher's own student list**, so a date can 
 - Parent phone — optional
 - Notes — optional
 `teacher_id` and `onboarded_by` both set to the logged-in user. `is_active` defaults true, `deactivated_at` null.
+
+**Seeding the real roster** (`seed_students.py`, already written):
+
+CSV columns — `roll_no, name, slot, enrollment_date, teacher` required; `parent_phone, notes` optional. `teacher` is `sahithi` or `nithya`, resolved to a real user `_id`.
+
+Procedure, in this order:
+
+1. Send the CSV to Sahithi to proofread. This is the **only** transcription check that exists — she can read 40 rows in five minutes; nobody can proofread 40 records typed one at a time into a form.
+2. `db.students.deleteMany({})` and `db.entries.deleteMany({})`. **Wipe, do not upsert.** A placeholder roll number absent from the real CSV would otherwise survive as a phantom student.
+3. `python seed_students.py students.csv --dry-run` — validates the whole batch before connecting: duplicate roll numbers across rows, `???` markers, date format, teacher names that resolve.
+4. Run without the flag.
+5. Open Atlas and read three documents.
+
+`teacher_id` is in `$set`, so re-running the seed overwrites any reassignment made in the app. Once real data is live the app owns assignment, not the CSV — move `teacher_id` to `$setOnInsert` before handover.
  
 ### 5.6 Student data
  
@@ -303,26 +366,34 @@ Sequence:
 Step 5 exists because a student who has quietly stopped attending but hasn't been deactivated would otherwise block "Finish day" forever.
  
 ## 8. Build phases
- 
-### v0.5 - completed
- 
-1. `students` collection + seed script with **real Telugu names and real roll numbers**
-2. `GET /entries/{date}` — student list, unstyled HTML
-3. `POST /entries` — write one attendance document
-4. HTMX wiring: toggle → POST → save tick
-5. Search bar
-6. Date navigator: prev / next / today / picker — **no calendar yet**
-7. Two hardcoded logins, list filtered by `teacher_id`
-8. **No past-date editing at all.** Today and yesterday only.
-Item 8 is what makes the rest fit. With no past-date editing there is no override flow, no password prompt and no audit log — the three fiddliest items, and they fall out together cleanly.
- 
-**This is a usable app.** A teacher can replace her register with it on Monday. That is the only bar that matters.
- 
-### v1
- 
-Calendar with colour coding · onboarding form · student detail and stats · edit/deactivate · admin roster (§5.7) · test scores · CSV export · holiday marking · audit log · supervisor override · backfill rules · real auth with bcrypt · slot topics (last)
- 
-**Tell her today that Saturday is the attendance version and the rest lands the following week.** A revised date given in advance is fine. A missed date discovered on the day is what damages the favour.
+
+### v0.5 — COMPLETE
+
+Delivered: seed script, `GET`/`POST /entries`, HTMX toggle wiring with three states and retry, search bar, date navigator with path and future-date validation, session auth, logout. See §0 for exactly what exists.
+
+Two things in the original v0.5 plan were **not** delivered and have moved into the list below: bcrypt, and past-date locking.
+
+### v1 — remaining work, in build order
+
+Build top to bottom. If time runs out, cut from the **bottom**, not the middle — the ordering is chosen so that stopping anywhere leaves a coherent app.
+
+1. **Render deploy** — nothing else matters until she can open a URL. Start command `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+2. **Real roster seeded** — CSV proofread by Sahithi first. Wipe `students` and `entries` before seeding; do not upsert over placeholders.
+3. **`slot_1`, `slot_2`, `remark` on the row** — save on `blur`, not per keystroke. Without these the app does not replace the register and she will keep using both.
+4. **bcrypt + real passwords** — §4.4.
+5. **Mobile layout and styling** — she uses this on a phone, standing up, at 10 PM. Do this only after item 3, because those three fields change the row's shape.
+6. **"Finish day" + validation highlighting** — §6.
+7. **Student data page** — §5.6, attendance fraction and the "days not yet entered" line.
+8. **Calendar with colour coding** — §5.4. The largest single item here: a month-wide aggregation, not a display problem. She can navigate by date without it.
+9. **Onboarding form** — §5.5.
+
+**Not in v1.** Test scores, admin roster (§5.7), supervisor override (§4.3), audit log (§3.6), CSV export, holiday marking, past-date locking (§4.2). These are week two. Pulling any of them forward is how five things end up at 80%.
+
+### Handover
+
+**Do not backfill 1–3 August from her paper register.** 120 hand-transcribed entries with no way to verify them, and she skips the learning curve she needs. Let her enter her first day herself, with you on the phone for the first ten minutes. Missing days at the start of a system's life are not a problem; wrong days are.
+
+Tell her plainly: *"You can record attendance, topics and remarks from your phone. Student records, calendar and test scores come next week. Use it alongside the register for a few days and tell me what's slow."*
  
 ---
  
@@ -335,49 +406,53 @@ Do not build "the backend" then "the frontend." Build one feature all the way th
 When that works, the app exists. Everything after is repetition of a proven pattern.
  
 ## 10. Acceptance checks
- 
-Run manually. Tick them off on paper.
- 
-1. Log in as Nithya — only her students appear.
-2. Log in as Sahithi — only her students, none of Nithya's.
-3. Mark a student present. Reload. Still present.
-4. Double-tap the toggle rapidly. **Exactly one** document exists in Atlas.
-5. Mark present, then absent. `updated_at` changes, no duplicate document.
-6. Open yesterday — editable, no password.
-7. Open an **empty** date from last week — editable, no password.
-7a. Open a date from last week **that has entries** — read-only, "Edit this date" visible.
-8. Wrong password → rejected, stays locked, message reads "Incorrect password."
-9. Correct admin password → that date unlocks. Edit one entry.
-10. Navigate away and back → locked again.
-11. `audit_log` contains the step-9 edit with `authorised_by` set.
-12. Mark a date as not a class day → its calendar cell turns grey.
-13. A holiday appears in no student's denominator.
-14. Onboard with a duplicate roll number → rejected with a clear message.
-15. Onboard a student dated today → attendance reads "0 / 0", not "0%" or an error.
-16. Deactivate a student → gone from today's list, **still present in last month's list and records.**
-17. Reassign a student between teachers → they move on today's list. **Open a past date that already has their entry: they still appear on the old teacher's list, not the new one.**
-17a. Turn on "Test today", enter 18 for the first student → the next row's `max_marks` pre-fills.
-17b. Mark a student absent → their score fields disable and clear.
-17c. Leave all scores blank → "Finish day" proceeds without complaint.
-18. Search "R01" → matching students only.
-19. Export CSV → opens in Excel with correct headers.
-20. "Finish day" with one unmarked → highlights that row, scrolls to it, names the count.
-21. "Finish day" again → offers "Finish anyway", and confirming writes `finished: true`.
-22. **Set the server clock to UTC. At 11:30 PM IST the app still says today, not tomorrow.**
-23. On a phone in portrait: every tap target reachable one-handed, nothing overflows horizontally.
+
+Run manually. Tick them off on paper. `[x]` = verified already, `[ ]` = pending the feature that enables it.
+
+1. `[x]` Log in as Nithya — only her students appear.
+2. `[x]` Log in as Sahithi — only her students, none of Nithya's.
+3. `[x]` Mark a student present. Reload. Still present.
+4. `[x]` Double-tap the toggle rapidly. **Exactly one** document exists in Atlas.
+5. `[x]` Mark present, then absent. `updated_at` changes, no duplicate document.
+6. `[ ]` Open yesterday — editable, no password.
+7. `[ ]` Open an **empty** date from last week — editable, no password.
+7a. `[ ]` Open a date from last week **that has entries** — read-only, "Edit this date" visible.
+8. `[ ]` Wrong password → rejected, stays locked, message reads "Incorrect password."
+9. `[ ]` Correct admin password → that date unlocks. Edit one entry.
+10. `[ ]` Navigate away and back → locked again.
+11. `[ ]` `audit_log` contains the step-9 edit with `authorised_by` set.
+12. `[ ]` Mark a date as not a class day → its calendar cell turns grey.
+13. `[ ]` A holiday appears in no student's denominator.
+14. `[ ]` Onboard with a duplicate roll number → rejected with a clear message.
+15. `[ ]` Onboard a student dated today → attendance reads "0 / 0", not "0%" or an error.
+16. `[ ]` Deactivate a student → gone from today's list, **still present in last month's list and records.**
+17. `[ ]` Reassign a student between teachers → they move on today's list. **Open a past date that already has their entry: they still appear on the old teacher's list, not the new one.**
+17a. `[ ]` Turn on "Test today", enter 18 for the first student → the next row's `max_marks` pre-fills.
+17b. `[ ]` Mark a student absent → their score fields disable and clear.
+17c. `[ ]` Leave all scores blank → "Finish day" proceeds without complaint.
+18. `[x]` Search "R01" → matching students only.
+19. `[ ]` Export CSV → opens in Excel with correct headers.
+20. `[ ]` "Finish day" with one unmarked → highlights that row, scrolls to it, names the count.
+21. `[ ]` "Finish day" again → offers "Finish anyway", and confirming writes `finished: true`.
+22. `[x]` **Set the server clock to UTC. At 11:30 PM IST the app still says today, not tomorrow.**
+23. `[ ]` On a phone in portrait: every tap target reachable one-handed, nothing overflows horizontally.
+
 **Check 22 is the one people skip and the one that silently corrupts a week of data.**
+
+**Before handover, re-run every `[x]` check against the live Render URL on a real phone.** Passing on localhost on a desktop is not the same test. Budget two hours for this and stop building to do it — a bug you find is a bug; a bug she finds is a broken favour.
  
 ---
  
 ## 11. Deployment
- 
+
 1. Render → Hobby workspace → Free instance → Singapore
-2. Env vars: `MONGO_URI`, `SESSION_SECRET`, `TZ=Asia/Kolkata`
-3. Atlas → Network Access → allow Render's egress IPs, **not** `0.0.0.0/0`
-4. Cron pinger on `/health` every 10 minutes, **17:15–22:30 IST only**
-5. **Create all unique indexes before the first real write**, not after
-6. Free-tier Atlas has no automated backup. Write a weekly `mongodump` script and run it manually. Old data is purged every three months — a mistake there is otherwise unrecoverable.
-**Deploy a hello world to Render before writing a single feature.** People leave deployment until the end, hit an environment-variable wall at 11 PM, and lose the night. Prove the pipe works while it's empty.
+2. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`. **Render assigns the port.** Hardcoding 8000 gives a service that builds fine and never serves traffic.
+3. Env vars: `MONGO_URI`, `SESSION_SECRET`, `TZ=Asia/Kolkata`, `SAHITHI_PASSWORD`, `NITHYA_PASSWORD` (the last two until bcrypt lands). `.env` is local only — Render never reads it.
+4. `https_only` on the session cookie must be **on in production, off locally**. Set it from an env var: `https_only=os.environ.get("RENDER") is not None`. Render sets `RENDER` automatically. Do not leave this as a manual toggle to remember.
+5. `pip freeze > requirements.txt` **before** the first deploy. Unpinned, Render resolves whatever is latest at build time, and a minor bump gives a deploy that worked yesterday and doesn't today with no code change to blame.
+6. Atlas → Network Access → allow Render's egress IPs, **not** `0.0.0.0/0`. These are different IPs from the laptop, so a local connection working does not mean Render will connect.
+7. Cron pinger on `/health` every 10 minutes, **17:15–22:30 IST only**. `/health` deliberately requires no session so the pinger keeps working.
+8. **Create all unique indexes before the first real write**, not after.
+9. Free-tier Atlas has no automated backup. Write a weekly `mongodump` script and run it manually. Old data is purged every three months — a mistake there is otherwise unrecoverable.
  
 ---
- 
