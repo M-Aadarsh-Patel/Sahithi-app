@@ -31,9 +31,15 @@ def entries_today():
 
 @app.get("/entries/{date}")
 def entries(request: Request, date: str):
-    students = db.students.find({"teacher_id": TEACHER_ID, "is_active": True}).sort("roll_no")
+    students = list(db.students.find({"teacher_id": TEACHER_ID, "is_active": True}).sort("roll_no"))
+    # One extra query, not one per row. A student with no document here is simply
+    # missing from the map, which is what renders the row grey.
+    existing = db.entries.find({"date": date, "student_id": {"$in": [s["_id"] for s in students]}})
+    status_by_id = {e["student_id"]: e["status"] for e in existing}
     return templates.TemplateResponse(
-        request, "entries.html", {"date": date, "students": list(students)}
+        request,
+        "entries.html",
+        {"date": date, "students": students, "status_by_id": status_by_id},
     )
 
 
@@ -66,6 +72,10 @@ def save_entry(
         },
         upsert=True,
     )
+    # saved=True is what draws the tick. A GET never sets it, so the tick means
+    # "just written", not "has a value".
     return templates.TemplateResponse(
-        request, "row.html", {"student": student, "status": status}
+        request,
+        "row.html",
+        {"student": student, "date": date, "status": status, "saved": True},
     )

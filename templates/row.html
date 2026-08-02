@@ -1,1 +1,12 @@
-<li id="row-{{ student._id }}">{{ student.name }} — {{ student.roll_no }} — {{ status }}</li>
+<li id="row-{{ student._id }}"
+    class="row is-{{ status or 'unmarked' }}"
+    hx-target="#row-{{ student._id }}"
+    hx-swap="outerHTML"
+    hx-vals='{"student_id": "{{ student._id }}", "date": "{{ date }}"}'>
+  <span class="name">{{ student.name }}</span>
+  <span class="roll">{{ student.roll_no }}</span>
+  <button class="present" hx-post="/entries" hx-vals='{"status": "present"}'>present</button>
+  <button class="absent" hx-post="/entries" hx-vals='{"status": "absent"}'>absent</button>
+  <button class="retry" type="button">retry</button>
+  {% if saved %}<span class="tick">✓</span>{% endif %}
+</li>

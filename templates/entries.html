@@ -1,6 +1,46 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ date }}</title>
+<script src="https://unpkg.com/htmx.org@2.0.10/dist/htmx.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1rem; }
+  ul { list-style: none; padding: 0; }
+  .row { display: flex; align-items: center; gap: .5rem;
+         padding: .3rem; border: 2px solid transparent; }
+  .roll { font-family: monospace; color: #666; margin-right: auto; }
+  button { min-height: 40px; padding: 0 .8rem;          /* §5.3 tap target */
+           background: #ddd; border: 1px solid #bbb; border-radius: 4px; }
+  /* Three states. Unmarked is the default grey, i.e. no entry document. */
+  .row.is-present .present { background: #2e7d32; color: #fff; }
+  .row.is-absent  .absent  { background: #c62828; color: #fff; }
+  .tick { color: #2e7d32; font-weight: bold; }
+  .retry { display: none; }
+  .row.failed { border-color: #c62828; }
+  .row.failed .retry { display: inline-block; }
+</style>
+
 <h1>{{ date }}</h1>
 <ul>
   {% for student in students %}
-    <li>{{ student.name }} — {{ student.roll_no }}</li>
+    {% with status = status_by_id.get(student._id) %}
+      {% include "row.html" %}
+    {% endwith %}
   {% endfor %}
 </ul>
+
+<script>
+  // A save that fails must never look like one that worked. htmx leaves the row
+  // untouched on a non-2xx or a dead network, so mark it and offer the same tap
+  // again. A successful retry swaps the whole <li>, which drops .failed with it.
+  function markFailed(event) {
+    const button = event.detail.elt;
+    const row = button.closest(".row");
+    row.classList.add("failed");
+    row.querySelector(".retry").onclick = () => {
+      row.classList.remove("failed");
+      button.click();
+    };
+  }
+  document.body.addEventListener("htmx:responseError", markFailed);
+  document.body.addEventListener("htmx:sendError", markFailed);
+</script>
