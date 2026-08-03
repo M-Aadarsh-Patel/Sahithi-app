@@ -1,0 +1,55 @@
+{# Shared design tokens and base type. Included by entries.html and login.html.
+   Inlined rather than served as a static file because mounting StaticFiles would
+   mean editing main.py. #}
+<style>
+  :root {
+    /* Warm off-white paper, near-black ink. Nothing here is pure #fff or #000 —
+       a warm grey reads calmer under a 10 PM room light than clinical white. */
+    --paper:          #f7f4ee;
+    --card:           #fffdf9;
+    --ink:            #1f1c18;
+    --ink-soft:       #6d665c;
+    --ink-faint:      #a09789;
+    --line:           #e7e0d4;
+    --line-strong:    #d5ccbc;
+
+    /* Muted green and muted terracotta. Desaturated well below signal-light
+       green and red so a screen of 41 rows does not read as an alarm panel. */
+    --green:          #4e7355;
+    --green-tint:     #eaf0e8;
+    --terracotta:     #a95a3c;
+    --terracotta-tint:#f8ebe4;
+
+    /* Past dates. Amber says "not today" without saying "error". */
+    --amber:          #8a6a2f;
+    --amber-tint:     #f8f0da;
+
+    --focus:          #3f6b8a;
+    --radius:         12px;
+    --radius-sm:      9px;
+    /* 44px, not 40. The 40px floor is the minimum; a thumb at arm's length in a
+       noisy room wants the extra four. */
+    --tap:            44px;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 1.1rem 1rem 3rem;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* Nothing should ever scroll sideways in portrait. */
+    overflow-x: hidden;
+  }
+
+  input, button, summary { font: inherit; color: inherit; }
+  /* Anything below 16px makes iOS Safari zoom the page on focus, which on this
+     app means the row jumps away mid-typing. */
+  input { font-size: max(1rem, 16px); }
+
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+</style>

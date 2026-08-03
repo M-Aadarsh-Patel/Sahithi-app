@@ -2,37 +2,163 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ date }}</title>
 <script src="https://unpkg.com/htmx.org@2.0.10/dist/htmx.min.js"></script>
+{% include "_style.html" %}
 <style>
-  body { font-family: system-ui, sans-serif; margin: 1rem; }
-  .datebar { display: flex; align-items: center; gap: .75rem;
-             width: 100%; margin-bottom: .5rem; }
-  .datebar .current { font-weight: bold; }
-  .datebar .today { color: #2e7d32; }
-  #picker { margin-left: auto; min-height: 40px; }
-  #search { width: 100%; box-sizing: border-box; min-height: 40px;
-            padding: 0 .5rem; margin-bottom: .5rem; }
-  ul { list-style: none; padding: 0; }
-  .row { display: flex; align-items: center; gap: .5rem;
-         padding: .3rem; border: 2px solid transparent; }
-  /* .row sets display:flex, which would otherwise beat the browser's own
+  /* ---- Date bar -------------------------------------------------------- */
+  /* Full width, and its colour is the answer to "which day am I writing to?" —
+     the one question that must never need a second look. Amber for a past date,
+     green for today. Read from the markup with :has() so the template needs no
+     extra class. */
+  .datebar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .45rem .55rem;
+    padding: .7rem .85rem;
+    margin: 0 0 .8rem;
+    border-radius: var(--radius);
+    border-left: 4px solid var(--amber);
+    background: var(--amber-tint);
+  }
+  .datebar:has(.today) { background: var(--green-tint); border-left-color: var(--green); }
+
+  .datebar .current {
+    font-size: 1.12rem; font-weight: 640; letter-spacing: -.012em;
+    margin-right: .15rem;
+  }
+  .datebar .today {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--green);
+    background: rgba(255, 255, 255, .75);
+    border-radius: 999px; padding: .2rem .5rem;
+  }
+  .datebar a {
+    display: inline-flex; align-items: center; min-height: var(--tap);
+    padding: 0 .5rem; margin: -.35rem 0;      /* tap area without visual bulk */
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft); text-decoration: none;
+    font-size: .88rem; font-weight: 550;
+  }
+  /* Its own full-width line. Prev, date, badge, next and a date field will not
+     share 360px without overflowing. */
+  #picker {
+    flex: 1 0 100%; min-width: 0; min-height: var(--tap);
+    padding: 0 .6rem;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    background: var(--card); color: var(--ink);
+  }
+
+  /* ---- Search ---------------------------------------------------------- */
+  #search {
+    width: 100%; min-height: var(--tap);
+    padding: 0 .85rem; margin: 0 0 1rem;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: 10px;
+  }
+  #search::placeholder { color: var(--ink-faint); }
+
+  /* ---- Rows ------------------------------------------------------------ */
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+
+  /* Six columns is what lets a flat row of nine children become three tidy
+     lines with no wrapper elements: name over toggle over topics. Every child
+     is placed explicitly, so the markup keeps its existing order and ids. */
+  .row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    column-gap: .45rem;
+    row-gap: .5rem;
+    align-items: center;
+    padding: .8rem .85rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--line-strong);
+    border-radius: var(--radius);
+  }
+  /* .row sets display:grid, which would otherwise beat the browser's own
      [hidden] { display: none } and leave hidden rows on screen. */
   .row[hidden] { display: none; }
-  .roll { font-family: monospace; color: #666; }
-  /* Enough to be usable on the row; §8 item 5 is the real mobile pass. */
-  .topic { flex: 1; min-width: 4rem; min-height: 40px; padding: 0 .4rem; }
-  .remark summary { min-height: 40px; line-height: 40px; padding: 0 .5rem;
-                    cursor: pointer; list-style: none; }
+
+  .name    { grid-area: 1 / 1 / 2 / 5; font-weight: 570; letter-spacing: -.008em;
+             overflow-wrap: anywhere; }
+  .roll    { grid-area: 1 / 5 / 2 / 7; justify-self: end;
+             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+             font-size: .82rem; font-variant-numeric: tabular-nums;
+             color: var(--ink-faint); }
+  .present { grid-area: 2 / 1 / 3 / 3; }
+  .absent  { grid-area: 2 / 3 / 3 / 5; }
+  .tick    { grid-area: 2 / 5 / 3 / 6; justify-self: center; }
+  .remark  { grid-area: 2 / 6 / 3 / 7; }
+  [name="slot_1"] { grid-area: 3 / 1 / 4 / 4; }
+  [name="slot_2"] { grid-area: 3 / 4 / 4 / 7; }
+  /* A fourth line exists only when something needs it. Both of these are absent
+     from the grid until then, so an ordinary row stays three lines tall. */
+  .remark[open]   { grid-area: 4 / 1 / 5 / 5; }
+  .retry          { grid-area: 4 / 5 / 5 / 7; }
+
+  /* ---- Toggle ---------------------------------------------------------- */
+  .present, .absent {
+    min-height: var(--tap);
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    background: var(--paper); color: var(--ink-soft);
+    font-size: .9rem; font-weight: 550; cursor: pointer;
+    transition: background-color .13s ease, border-color .13s ease, color .13s ease;
+  }
+  /* Three states. Unmarked is the quiet default, i.e. no entry document. */
+  .row.is-present .present {
+    background: var(--green); border-color: var(--green); color: #fff;
+  }
+  .row.is-absent .absent {
+    background: var(--terracotta); border-color: var(--terracotta); color: #fff;
+  }
+  /* The left edge repeats the state, so progress down a list of 41 is legible
+     from a scroll rather than by reading each toggle. */
+  .row.is-present { border-left-color: var(--green); }
+  .row.is-absent  { border-left-color: var(--terracotta); }
+
+  /* ---- Topics and remark ----------------------------------------------- */
+  .topic, .remark input {
+    width: 100%; min-width: 0; min-height: var(--tap);
+    padding: 0 .6rem;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+  }
+  .topic::placeholder, .remark input::placeholder { color: var(--ink-faint); }
+  .topic:focus, .remark input:focus { background: var(--card); }
+
+  .remark summary {
+    display: flex; align-items: center; justify-content: center;
+    min-height: var(--tap);
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--paper); color: var(--ink-soft);
+    font-size: 1.05rem; cursor: pointer;
+    list-style: none;                       /* drop the disclosure triangle */
+  }
   .remark summary::-webkit-details-marker { display: none; }
-  .remark input { min-height: 40px; padding: 0 .4rem; }
-  button { min-height: 40px; padding: 0 .8rem;          /* §5.3 tap target */
-           background: #ddd; border: 1px solid #bbb; border-radius: 4px; }
-  /* Three states. Unmarked is the default grey, i.e. no entry document. */
-  .row.is-present .present { background: #2e7d32; color: #fff; }
-  .row.is-absent  .absent  { background: #c62828; color: #fff; }
-  .tick { color: #2e7d32; font-weight: bold; }
-  .retry { display: none; }
-  .row.failed { border-color: #c62828; }
-  .row.failed .retry { display: inline-block; }
+  /* Only when open, so a closed <details> keeps the browser's own rule that
+     hides everything but the summary. */
+  .remark[open] { display: flex; align-items: center; gap: .45rem; }
+  .remark[open] summary {
+    flex: 0 0 auto; padding: 0 .75rem;
+    background: var(--amber-tint); border-color: var(--amber-tint);
+    color: var(--amber);
+  }
+  .remark[open] input { flex: 1 1 auto; }
+
+  /* ---- Saved and failed ------------------------------------------------ */
+  .tick { color: var(--green); font-size: 1.05rem; line-height: 1; }
+  .retry {
+    display: none; min-height: var(--tap);
+    border: 1px solid var(--terracotta); border-radius: var(--radius-sm);
+    background: var(--card); color: var(--terracotta);
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+  }
+  .row.failed {
+    border-color: var(--terracotta);
+    border-left-color: var(--terracotta);
+    background: var(--terracotta-tint);
+  }
+  .row.failed .retry { display: block; }
 </style>
 
 <div class="datebar">

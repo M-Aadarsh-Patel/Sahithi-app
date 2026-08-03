@@ -1,22 +1,57 @@
 <!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign in</title>
+{% include "_style.html" %}
 <style>
-  body { font-family: system-ui, sans-serif; margin: 1rem; max-width: 22rem; }
-  .profiles { display: flex; gap: .5rem; margin-bottom: .75rem; }
-  .profiles label { flex: 1; text-align: center; min-height: 40px; line-height: 40px;
-                    background: #ddd; border: 1px solid #bbb; border-radius: 4px;
-                    cursor: pointer; }
+  body { max-width: 23rem; margin: 0 auto; padding-top: 3.5rem; }
+
+  h1 {
+    margin: 0 0 1.6rem;
+    font-size: 1.45rem; font-weight: 620; letter-spacing: -.022em;
+  }
+
+  .profiles {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: .6rem; margin-bottom: 1.1rem;
+  }
+  .profiles label {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 3.4rem;
+    background: var(--card); color: var(--ink-soft);
+    border: 1px solid var(--line-strong); border-radius: 10px;
+    font-weight: 550; cursor: pointer;
+    transition: background-color .13s ease, border-color .13s ease, color .13s ease;
+  }
   /* Off-screen rather than display:none, so the radio stays keyboard-reachable
      and announced by screen readers. */
   .profiles input { position: absolute; opacity: 0; }
-  .profiles label:has(input:checked) { background: #2e7d32; color: #fff; }
-  .profiles label:has(input:focus-visible) { outline: 2px solid #2e7d32; }
-  #password { width: 100%; box-sizing: border-box; min-height: 40px;
-              padding: 0 .5rem; margin-bottom: .75rem; font-size: 1rem; }
-  #signin { width: 100%; min-height: 40px; font-size: 1rem;
-            background: #ddd; border: 1px solid #bbb; border-radius: 4px; }
-  .error { color: #c62828; }
+  .profiles label:has(input:checked) {
+    background: var(--green); border-color: var(--green); color: #fff;
+  }
+  .profiles label:has(input:focus-visible) {
+    outline: 2px solid var(--focus); outline-offset: 2px;
+  }
+
+  #password {
+    width: 100%; min-height: var(--tap);
+    padding: 0 .85rem; margin-bottom: .8rem;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: 10px;
+  }
+  #password::placeholder { color: var(--ink-faint); }
+
+  #signin {
+    width: 100%; min-height: var(--tap);
+    background: var(--ink); color: var(--paper);
+    border: 1px solid var(--ink); border-radius: 10px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+
+  .error {
+    margin: 0 0 1.1rem; padding: .65rem .8rem;
+    background: var(--terracotta-tint); color: var(--terracotta);
+    border-radius: var(--radius-sm); font-size: .92rem;
+  }
 </style>
 
 <h1>HR Academy</h1>
