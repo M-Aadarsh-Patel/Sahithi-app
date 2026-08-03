@@ -38,7 +38,7 @@
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
     border-radius: 999px; padding: .22rem .5rem .2rem;
   }
-  .datebar a {
+  .datebar a, .back {
     display: inline-flex; align-items: center; min-height: var(--tap);
     padding: 0 .5rem; margin: -.35rem 0;      /* tap area without visual bulk */
     border-radius: var(--radius-sm);
@@ -46,7 +46,14 @@
     font-size: .88rem; font-weight: 550;
     transition: color .13s ease, background-color .13s ease;
   }
-  .datebar a:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
+  .datebar a:active, .back:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
+
+  /* Left-aligned, mirroring the dashboard's right-aligned logout link. Same
+     treatment as the prev/next links above, reused rather than restated; the
+     negative margin pulls the 44px tap area flush with the page edge so the
+     padding does not read as an indent. */
+  header { display: flex; margin: 0 0 .8rem; }
+  .back { padding: 0 .7rem; margin: 0 0 0 -.7rem; }
   /* Its own full-width line. Prev, date, badge, next and a date field will not
      share 360px without overflowing.
 
@@ -228,6 +235,9 @@
   .row.failed .retry { display: block; }
 </style>
 
+<header>
+  <a class="back" href="/dashboard">‹ Dashboard</a>
+</header>
 <div class="datebar">
   <a href="/entries/{{ prev_date }}">‹ prev</a>
   <span class="current">{{ formatted }}</span>
