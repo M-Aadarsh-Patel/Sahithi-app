@@ -47,12 +47,31 @@
 </ul>
 
 <script>
+  // The three states live on the row, and the button colours key off it, so this
+  // is the whole of "show a state".
+  function setState(row, state) {
+    row.classList.remove("is-unmarked", "is-present", "is-absent");
+    row.classList.add("is-" + state);
+  }
+
+  // Paint the tap now rather than at the end of a round trip — on mobile data a
+  // button that does nothing for half a second gets tapped again. The POST still
+  // fires, and on success htmx swaps in the server's own row, which carries the
+  // authoritative class, a fresh data-status and the tick.
+  function optimistic(button, state) {
+    const row = button.closest(".row");
+    row.classList.remove("failed");  // a new tap supersedes the last failure
+    setState(row, state);
+  }
+
   // A save that fails must never look like one that worked. htmx leaves the row
-  // untouched on a non-2xx or a dead network, so mark it and offer the same tap
-  // again. A successful retry swaps the whole <li>, which drops .failed with it.
+  // untouched on a non-2xx or a dead network, so put back the last state the
+  // server confirmed, mark it, and offer the same tap again. A successful retry
+  // swaps the whole <li>, which drops .failed with it.
   function markFailed(event) {
     const button = event.detail.elt;
     const row = button.closest(".row");
+    setState(row, row.dataset.status);
     row.classList.add("failed");
     row.querySelector(".retry").onclick = () => {
       row.classList.remove("failed");

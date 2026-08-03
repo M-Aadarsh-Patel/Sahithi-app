@@ -1,12 +1,18 @@
+{# data-status is the last state the server confirmed. The class is what is on
+   screen, which a tap changes before the save lands — so a failed save has
+   something true to revert to rather than the guess it just painted. #}
 <li id="row-{{ student._id }}"
     class="row is-{{ status or 'unmarked' }}"
+    data-status="{{ status or 'unmarked' }}"
     hx-target="#row-{{ student._id }}"
     hx-swap="outerHTML"
     hx-vals='{"student_id": "{{ student._id }}", "date": "{{ date }}"}'>
   <span class="name">{{ student.name }}</span>
   <span class="roll">{{ student.roll_no }}</span>
-  <button class="present" hx-post="/entries" hx-vals='{"status": "present"}'>present</button>
-  <button class="absent" hx-post="/entries" hx-vals='{"status": "absent"}'>absent</button>
+  <button class="present" onclick="optimistic(this, 'present')"
+          hx-post="/entries" hx-vals='{"status": "present"}'>present</button>
+  <button class="absent" onclick="optimistic(this, 'absent')"
+          hx-post="/entries" hx-vals='{"status": "absent"}'>absent</button>
   <button class="retry" type="button">retry</button>
   {% if saved %}<span class="tick">✓</span>{% endif %}
 </li>
