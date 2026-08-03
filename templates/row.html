@@ -41,6 +41,30 @@
          placeholder="slot 2" autocomplete="off"
          hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
 
+  {# §3.4 — score over max_marks, one test a day. Same isolation as the topics
+     above: blur, no swap, synced to itself.
+
+     `or ''` is wrong for these two, because a legitimate score of 0 is falsy and
+     would render as an empty box. They test against none explicitly instead —
+     which also covers `entry` itself being None, since Undefined is not none.
+
+     Disabled and shown empty when the student is absent: you cannot score
+     someone who was not there. A disabled input is never submitted, so the
+     fields cannot save while the row is in that state either. #}
+  {% set absent = entry.status == 'absent' %}
+  <span class="marks-label" aria-hidden="true">Test Score</span>
+  <input class="mark" name="score" type="number" inputmode="numeric"
+         placeholder="score" aria-label="Test score" autocomplete="off"
+         {% if absent %}disabled{% endif %}
+         value="{{ '' if absent else (entry.score if entry.score is not none else '') }}"
+         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+  <span class="slash" aria-hidden="true">/</span>
+  <input class="mark" name="max_marks" type="number" inputmode="numeric"
+         placeholder="max marks" aria-label="Test score, out of" autocomplete="off"
+         {% if absent %}disabled{% endif %}
+         value="{{ '' if absent else (entry.max_marks if entry.max_marks is not none else '') }}"
+         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+
   {# <details> is the expandable field, with no JavaScript to make it open. #}
   <details class="remark">
     <summary title="Remark">✎</summary>

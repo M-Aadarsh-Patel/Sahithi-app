@@ -230,6 +230,11 @@ def save_entry(
     slot_1: Annotated[str | None, Form()] = None,
     slot_2: Annotated[str | None, Form()] = None,
     remark: Annotated[str | None, Form()] = None,
+    # §3.4 — nullable integers. int|None rather than str, so the coercion is
+    # Pydantic's; the inputs are type=number, so the browser will not submit
+    # anything that could fail it.
+    score: Annotated[int | None, Form()] = None,
+    max_marks: Annotated[int | None, Form()] = None,
 ) -> Response:
     # Guard only — the write keys off the raw string. Runs before the student
     # lookup so a bad date costs no query.
@@ -252,6 +257,11 @@ def save_entry(
             # None here means she emptied the box, which is a real edit. Blank is
             # never validated and never rejected — §6, topics are free text.
             changes[field] = value or ""
+    # Nullable, so an emptied box writes null rather than "". Same presence rule:
+    # a request that never mentions score cannot wipe one.
+    for field, value in (("score", score), ("max_marks", max_marks)):
+        if field in present:
+            changes[field] = value
     # Not keyed off `present`: an empty status is not a state a row can be in, so
     # it is written only when it arrived as one of the two literals.
     if status is not None:

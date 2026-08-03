@@ -90,12 +90,18 @@
   /* ---- Rows ------------------------------------------------------------ */
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 
-  /* Six columns is what lets a flat row of nine children become three tidy
-     lines with no wrapper elements: name over toggle over topics. Every child
-     is placed explicitly, so the markup keeps its existing order and ids. */
+  /* Twelve columns is what lets a flat row of children become tidy lines with no
+     wrapper elements: name over toggle over topics over the test score. Every
+     child is placed explicitly, so the markup keeps its existing order and ids.
+
+     It was six until the score line needed a label, a short field, a slash and a
+     second short field on one line — four items that six tracks cannot
+     proportion. Twelve is a straight subdivision, not a reflow: two of these
+     tracks plus the gap between them measure exactly one of the old ones, so
+     every other line is unchanged to the pixel. */
   .row {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(12, 1fr);
     column-gap: .45rem;
     row-gap: .5rem;
     align-items: center;
@@ -111,27 +117,44 @@
      [hidden] { display: none } and leave hidden rows on screen. */
   .row[hidden] { display: none; }
 
-  .name    { grid-area: 1 / 1 / 2 / 5; font-size: 1.02rem; font-weight: 560;
+  .name    { grid-area: 1 / 1 / 2 / 9; font-size: 1.02rem; font-weight: 560;
              letter-spacing: -.012em; line-height: 1.25;
              overflow-wrap: anywhere; }
   /* Set on its own dark plate so a column of roll numbers reads as an index
      down the right edge rather than as more sentence. */
-  .roll    { grid-area: 1 / 5 / 2 / 7; justify-self: end;
+  .roll    { grid-area: 1 / 9 / 2 / 13; justify-self: end;
              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
              font-size: .74rem; font-variant-numeric: tabular-nums;
              letter-spacing: .01em; color: var(--ink-faint);
              background: rgba(0, 0, 0, .28); border-radius: 6px;
              padding: .15rem .42rem; }
-  .present { grid-area: 2 / 1 / 3 / 3; }
-  .absent  { grid-area: 2 / 3 / 3 / 5; }
-  .tick    { grid-area: 2 / 5 / 3 / 6; justify-self: center; }
-  .remark  { grid-area: 2 / 6 / 3 / 7; }
-  [name="slot_1"] { grid-area: 3 / 1 / 4 / 4; }
-  [name="slot_2"] { grid-area: 3 / 4 / 4 / 7; }
-  /* A fourth line exists only when something needs it. Both of these are absent
-     from the grid until then, so an ordinary row stays three lines tall. */
-  .remark[open]   { grid-area: 4 / 1 / 5 / 5; }
-  .retry          { grid-area: 4 / 5 / 5 / 7; }
+  .present { grid-area: 2 / 1 / 3 / 5; }
+  .absent  { grid-area: 2 / 5 / 3 / 9; }
+  .tick    { grid-area: 2 / 9 / 3 / 11; justify-self: center; }
+  .remark  { grid-area: 2 / 11 / 3 / 13; }
+  [name="slot_1"] { grid-area: 3 / 1 / 4 / 7; }
+  [name="slot_2"] { grid-area: 3 / 7 / 4 / 13; }
+  /* Line 4, §5.3, read as one sentence: "Test Score: 18 / 25". The label anchors
+     the left, the two fields are the same width so the pair reads as a fraction
+     rather than two unrelated boxes, and the slash gets a track of its own so it
+     sits centred between them instead of drifting against one. */
+  /* Line 4 is the label alone, line 5 the fraction. The two fields take the same
+     halves of the row as slot 1 and slot 2 above, so all four boxes share the
+     same left and right edges down the row.
+
+     The slash is placed across the whole line rather than in a track of its own:
+     centred in a 12-column grid it lands exactly on the seam between the two
+     halves, which is where the gap is. A track would have had to come out of the
+     fields. */
+  .marks-label       { grid-area: 4 / 1 / 5 / 13; }
+  [name="score"]     { grid-area: 5 / 1 / 6 / 7; justify-self: start; }
+  .slash             { grid-area: 5 / 1 / 6 / 13; justify-self: center;
+                       pointer-events: none; }
+  [name="max_marks"] { grid-area: 5 / 7 / 6 / 13; justify-self: end; }
+  /* A sixth line exists only when something needs it. Both of these are absent
+     from the grid until then, so an ordinary row stays five lines tall. */
+  .remark[open]   { grid-area: 6 / 1 / 7 / 9; }
+  .retry          { grid-area: 6 / 9 / 7 / 13; }
 
   /* ---- Toggle ---------------------------------------------------------- */
   .present, .absent {
@@ -179,7 +202,50 @@
                 box-shadow .14s ease;
   }
   .topic::placeholder, .remark input::placeholder { color: var(--ink-faint); }
-  .topic:focus, .remark input:focus, #search:focus, #picker:focus {
+
+  /* Same sunken treatment as a topic box, but sized for two or three digits and
+     centred so the pair reads as a fraction across the slash. */
+  /* A caption for the two fields under it, not a field in its own right — so it
+     is small, muted and set apart by case rather than by size or colour alone.
+
+     line-height 1 and the negative bottom margin are what keep the extra line
+     cheap: the box is only as tall as the glyphs, and it claws back most of the
+     row-gap so the fields sit tight under their own label rather than floating
+     halfway between it and the topics above. */
+  .marks-label {
+    align-self: end;
+    font-size: .64rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--ink-faint);
+    line-height: 1; margin: .6rem 0 -.2rem;
+  }
+  /* Absent dims the fields via :disabled; the label has to follow or the line
+     half-fades and looks like a rendering fault. */
+  .row.is-absent .marks-label,
+  .row.is-absent .slash { opacity: .4; }
+
+  .mark {
+    width: 100%; min-width: 0; min-height: var(--tap);
+    padding: 0 .6rem; text-align: center;
+    background: rgba(0, 0, 0, .25); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;            /* no spinner */
+    transition: border-color .14s ease, background-color .14s ease,
+                box-shadow .14s ease, opacity .14s ease;
+  }
+  .mark::-webkit-inner-spin-button,
+  .mark::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  /* Absent: dimmed, and the disabled attribute already blocks focus, typing and
+     submission. Not hidden — the fraction's place in the row stays put. */
+  .mark:disabled { opacity: .4; }
+  /* Slot-width, less the room the slash needs. Set after .mark so it wins over
+     that rule's width: 100% — same specificity, so order decides. Trimming both
+     by the same amount keeps the pair symmetrical about the seam. */
+  [name="score"], [name="max_marks"] { width: calc(100% - .55rem); }
+  .mark::placeholder { color: var(--ink-faint); }
+  .slash { color: var(--ink-faint); font-size: 1rem; }
+
+  .topic:focus, .mark:focus, .remark input:focus, #search:focus, #picker:focus {
     outline: none;
     background: rgba(0, 0, 0, .38);
     border-color: var(--focus);
