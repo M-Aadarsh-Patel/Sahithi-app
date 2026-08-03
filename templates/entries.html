@@ -48,9 +48,22 @@
   }
   .datebar a:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
   /* Its own full-width line. Prev, date, badge, next and a date field will not
-     share 360px without overflowing. */
+     share 360px without overflowing.
+
+     The sizing here is deliberately belt-and-braces, because a percentage
+     flex-basis on a native date control is not reliable: some engines resolve it
+     against the content box and then add this field's own padding and borders
+     outside it, which pushed the right edge ~21px past the bar. box-sizing is
+     restated so no UA rule can win it, and max-width is a hard clamp on the
+     border box — it holds whether the cause is that, or a native control
+     insisting on its intrinsic width. */
   #picker {
-    flex: 1 0 100%; min-width: 0; min-height: var(--tap);
+    flex: 1 1 100%;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: var(--tap);
     padding: 0 .6rem;
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     background: rgba(0, 0, 0, .25); color: var(--ink);
