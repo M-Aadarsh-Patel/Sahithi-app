@@ -4,7 +4,8 @@ The whole batch is checked before MongoDB is touched, so a bad CSV fails on your
 laptop instead of half-way through writing to Atlas.
 
     python seed_students.py [students.csv]
-    python seed_students.py --check      # self-test the validator, no CSV, no database
+    python seed_students.py students.csv --dry-run   # validate the CSV, no database
+    python seed_students.py --self-check             # self-test the validator, no CSV, no database
 """
 
 import csv
@@ -21,9 +22,12 @@ USERS: list[dict[str, str]] = [
     {"name": "Nithya", "username": "nithya", "role": "teacher"},
 ]
 
-TEACHERS = {u["name"] for u in USERS}
-SLOTS = {"6-9", "7-10"}  # §3.2
-REQUIRED = ("roll_no", "name", "teacher", "slot", "enrollment_date")
+# The CSV names teachers by username, and case is not the proofreader's problem.
+TEACHERS = {u["username"] for u in USERS}
+# No SLOTS set. §3.2: slot is free text, not an enum — the real roster holds
+# seven distinct timings, so anything that validated against a fixed list would
+# reject the whole file.
+REQUIRED = ("roll_no", "name", "teacher", "slot", "enrollment_date", "class")
 
 
 def validate(rows: list[dict[str, str]]) -> list[str]:
@@ -33,7 +37,7 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
     error per run is what makes people give up and hand-edit the database instead.
     """
     problems: list[str] = []
-    first_seen: dict[str, int] = {}
+    first_seen: dict[int, int] = {}  # roll number -> the line that claimed it
 
     for line, row in enumerate(rows, start=2):  # line 1 is the CSV header
         def field(name: str) -> str:
@@ -49,23 +53,26 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
 
         roll = field("roll_no")
         if roll:
-            if roll in first_seen:
+            # Stored as an integer so .sort("roll_no") puts 2 before 10. isascii()
+            # keeps out the digits isdigit() accepts but int() rejects, like "²".
+            number = int(roll) if roll.isascii() and roll.isdigit() else None
+            if number is None or number < 1:
                 problems.append(
-                    f"line {line}: roll_no {roll} already used on line {first_seen[roll]}"
+                    f"line {line}: roll_no {roll!r} is not a positive whole number"
+                )
+            elif number in first_seen:
+                problems.append(
+                    f"line {line}: roll_no {roll} already used on line {first_seen[number]}"
                 )
             else:
-                first_seen[roll] = line
+                first_seen[number] = line
 
-        teacher = field("teacher")
+        # Matched lowercase against users.username, so "Sahithi" and "sahithi"
+        # are the same teacher.
+        teacher = field("teacher").lower()
         if teacher and teacher not in TEACHERS:
             problems.append(
                 f"line {line}: unknown teacher {teacher!r}, expected one of {sorted(TEACHERS)}"
-            )
-
-        slot = field("slot")
-        if slot and slot not in SLOTS:
-            problems.append(
-                f"line {line}: unknown slot {slot!r}, expected one of {sorted(SLOTS)}"
             )
 
         date = field("enrollment_date")
@@ -110,17 +117,19 @@ def seed(rows: list[dict[str, str]]) -> None:
         # upsert=True with ReturnDocument.AFTER always returns a document;
         # the narrowing is for the type checker, not a real branch.
         assert doc is not None
-        teacher_ids[user["name"]] = doc["_id"]
+        teacher_ids[user["username"]] = doc["_id"]
 
     inserted = updated = 0
     for row in rows:
-        teacher_id = teacher_ids[row["teacher"].strip()]
+        teacher_id = teacher_ids[row["teacher"].strip().lower()]
         result = db.students.update_one(
-            {"roll_no": row["roll_no"].strip()},
+            # int, not str. validate() has already proved this parses.
+            {"roll_no": int(row["roll_no"].strip())},
             {
                 "$set": {
                     "name": row["name"].strip(),
                     "teacher_id": teacher_id,
+                    "class": row["class"].strip(),
                     "slot": row["slot"].strip(),
                     "enrollment_date": row["enrollment_date"].strip(),
                     "parent_phone": (row.get("parent_phone") or "").strip() or None,
@@ -150,29 +159,37 @@ def seed(rows: list[dict[str, str]]) -> None:
 
 def _self_check() -> None:
     good: dict[str, str] = {
-        "roll_no": "R001",
+        "roll_no": "1",
         "name": "Aditya Reddy",
-        "teacher": "Sahithi",
-        "slot": "6-9",
-        "enrollment_date": "2026-07-01",
+        "teacher": "sahithi",
+        "slot": "6 - 8:30",
+        "enrollment_date": "2026-08-01",
+        "class": "10",
     }
     assert validate([good]) == []
+    assert validate([{**good, "teacher": "Sahithi"}]) == [], "teacher case must not matter"
+    # §3.2 — free text. A fixed list of timings would reject the real roster.
+    assert validate([{**good, "slot": "8 - 10"}]) == [], "any slot must be accepted"
     assert validate([good, good]), "duplicate roll_no must be caught"
     assert validate([{**good, "name": ""}]), "blank required field must be caught"
+    assert validate([{**good, "class": ""}]), "blank class must be caught"
     assert validate([{**good, "name": "???"}]), "placeholder marker must be caught"
     assert validate([{**good, "teacher": "Priya"}]), "unknown teacher must be caught"
-    assert validate([{**good, "slot": "5-8"}]), "unknown slot must be caught"
+    assert validate([{**good, "roll_no": "R001"}]), "non-numeric roll_no must be caught"
+    assert validate([{**good, "roll_no": "0"}]), "roll_no must be positive"
     assert validate([{**good, "enrollment_date": "01-07-2026"}]), "wrong date shape"
     assert validate([{**good, "enrollment_date": "2026-02-30"}]), "impossible date"
     print("validate(): all checks pass")
 
 
 def main() -> None:
-    if "--check" in sys.argv:
+    if "--self-check" in sys.argv:
         _self_check()
         return
 
-    path = sys.argv[1] if len(sys.argv) > 1 else "students.csv"
+    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+    paths = [a for a in sys.argv[1:] if not a.startswith("--")]
+    path = paths[0] if paths else "students.csv"
     with open(path, newline="", encoding="utf-8") as f:
         # DictReader is typed as dict[str | Any, str | Any]; the header row is
         # plain strings, so pin it to what it actually is.
@@ -184,6 +201,11 @@ def main() -> None:
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
         sys.exit(1)
+
+    # Stops here, before seed() imports db — so --dry-run never opens a connection.
+    if "--dry-run" in flags:
+        print(f"{len(rows)} rows validated. Nothing was written.")
+        return
 
     seed(rows)
 

@@ -223,7 +223,7 @@ The only failure message is **"Incorrect password."** Never *"you do not have ad
 ### 4.4 Auth
  
 - bcrypt, cost 12. Password reset = you run a script that writes a new hash. You never see the plaintext.
-- Session cookie, `httponly`, 12-hour expiry.
+- Browser Session cookie plus a 30 min idle timeout, `httponly`.
 - One generic failure message. Don't distinguish "no such user" from "wrong password".
 ### 4.5 Which students appear on a given date
  
@@ -387,7 +387,7 @@ Build top to bottom. If time runs out, cut from the **bottom**, not the middle �
 8. **Calendar with colour coding** — §5.4. The largest single item here: a month-wide aggregation, not a display problem. She can navigate by date without it.
 9. **Onboarding form** — §5.5.
 
-**Not in v1.** Test scores, admin roster (§5.7), supervisor override (§4.3), audit log (§3.6), CSV export, holiday marking, past-date locking (§4.2). These are week two. Pulling any of them forward is how five things end up at 80%.
+**Not in v1 for now.** Test scores, admin roster (§5.7), supervisor override (§4.3), audit log (§3.6), CSV export, holiday marking, past-date locking (§4.2). Pulling any of them forward is how five things end up at 80%.
 
 ### Handover
 

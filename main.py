@@ -19,10 +19,22 @@ if not SESSION_SECRET:
     raise RuntimeError("SESSION_SECRET is not set")
 
 app = FastAPI()
-# Starlette always sets httponly on this cookie; max_age is §4.4's 12 hours,
-# which has to be given explicitly because the default is 14 days.
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, max_age=12 * 60 * 60)
+# Starlette always sets httponly on this cookie. max_age=None omits Max-Age
+# altogether, making it a browser-session cookie instead of one that survives a
+# fixed 12 hours. It also stops itsdangerous expiring the signature by age, so
+# IDLE_TIMEOUT below is the only thing that ends a session.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    max_age=None,
+    https_only=os.environ.get("RENDER") is not None,
+)
 templates = Jinja2Templates(directory="templates")
+
+# Phones routinely keep session cookies alive across a tab close, and some restore
+# them after a reboot, so the cookie's own lifetime protects nothing on the device
+# this app is used on. Inactivity is what ends a session.
+IDLE_TIMEOUT = timedelta(minutes=30)
 
 
 def parse_date(raw: str) -> date:
@@ -45,17 +57,45 @@ def parse_date(raw: str) -> date:
     return day
 
 
+def login_required(request: Request) -> HTTPException:
+    """The right flavour of "go and log in" for whoever is asking.
+
+    htmx swaps a response body into one row, so a plain 303 would follow the
+    redirect and drop the entire login page inside a single student's <li>.
+    HX-Redirect tells htmx to navigate the whole page instead — it acts on that
+    header before it looks at the status or swaps anything, so nothing is written
+    into the row on the way out.
+
+    For an ordinary page load, 303 rather than 307 so the browser retries as a
+    GET — a 307 would re-send a POST body to /login. /health deliberately does
+    not depend on any of this: the §11 cron pinger has no session.
+    """
+    if request.headers.get("HX-Request"):
+        return HTTPException(status_code=401, headers={"HX-Redirect": "/login"})
+    return HTTPException(status_code=303, headers={"Location": "/login"})
+
+
 def current_user(request: Request) -> dict[str, Any]:
     """The logged-in user, or a redirect to /login.
 
-    303 rather than 307 so the browser retries as a GET — a 307 would re-send a
-    POST body to /login. /health deliberately does not depend on this: the §11
-    cron pinger has no session.
+    Every authenticated request stamps last_seen, so the 30 minutes is idle time,
+    not time since login — she is never signed out mid-entry while working.
     """
+    now = datetime.now(IST)
+    last_seen = request.session.get("last_seen")
+    if last_seen and now - datetime.fromisoformat(last_seen) > IDLE_TIMEOUT:
+        # Clearing means the stale cookie is actively deleted rather than left to
+        # be re-rejected on every later request.
+        request.session.clear()
+        raise login_required(request)
+
     user_id = request.session.get("user_id")
     user = db.users.find_one({"_id": ObjectId(user_id)}) if user_id else None
     if user is None:
-        raise HTTPException(status_code=303, headers={"Location": "/login"})
+        request.session.clear()
+        raise login_required(request)
+
+    request.session["last_seen"] = now.isoformat()
     return user
 
 
@@ -89,6 +129,10 @@ def login(
         )
     # Signed by SESSION_SECRET, so the browser can read this but not forge it.
     request.session["user_id"] = str(user["_id"])
+    # Started here, not on the first page load. Otherwise a login left untouched
+    # overnight would still be valid in the morning, because the first request
+    # would find no last_seen to measure against and simply stamp a fresh one.
+    request.session["last_seen"] = datetime.now(IST).isoformat()
     return RedirectResponse("/entries", status_code=303)
 
 
@@ -103,10 +147,14 @@ def entries(
     request: Request, date: str, user: Annotated[dict[str, Any], Depends(current_user)]
 ) -> Response:
     day = parse_date(date)
-    students = list(db.students.find({"teacher_id": user["_id"], "is_active": True}).sort("roll_no"))
+    students = list(
+        db.students.find({"teacher_id": user["_id"], "is_active": True}).sort("roll_no")
+    )
     # One extra query, not one per row. A student with no document here is simply
     # missing from the map, which is what renders the row grey.
-    existing = db.entries.find({"date": date, "student_id": {"$in": [s["_id"] for s in students]}})
+    existing = db.entries.find(
+        {"date": date, "student_id": {"$in": [s["_id"] for s in students]}}
+    )
     status_by_id = {e["student_id"]: e["status"] for e in existing}
     return templates.TemplateResponse(
         request,
