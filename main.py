@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 from bson import ObjectId
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pymongo import ReturnDocument
 from starlette.middleware.sessions import SessionMiddleware
@@ -31,6 +32,11 @@ app.add_middleware(
     https_only=os.environ.get("RENDER") is not None,
 )
 templates = Jinja2Templates(directory="templates")
+# A mount, not a route: nothing under /static goes through current_user, which is
+# what the login page needs — it shows the logo before anyone has a session.
+# Relative path, matching Jinja2Templates above; both resolve against the working
+# directory Render starts uvicorn from.
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Phones routinely keep session cookies alive across a tab close, and some restore
 # them after a reboot, so the cookie's own lifetime protects nothing on the device
