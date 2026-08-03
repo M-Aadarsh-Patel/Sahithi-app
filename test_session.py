@@ -149,6 +149,14 @@ def run_checks(base: str) -> None:
     rolling = request(base, "GET", f"/entries/{today}", cookie=fresh)[1]
     check("active request re-stamps last_seen", "session=" in rolling.get("set-cookie", ""))
 
+    status, headers, _ = request(base, "GET", "/logout", cookie=live)
+    check("logout redirects to /login", status == 303, f"status={status}")
+    check("  -> Location: /login", headers.get("location") == "/login")
+    check("  -> cookie deleted", "null" in headers.get("set-cookie", ""))
+    # Deliberately not asserting that the captured cookie stops working. Sessions
+    # are stateless: logout deletes the browser's copy, it cannot revoke a value
+    # already signed. IDLE_TIMEOUT is what bounds a stolen one.
+
     print("\n3. HX-Redirect instead of the login page in a row")
     hx = {"HX-Request": "true"}
     entry = {"student_id": str(sahithi["_id"]), "date": today, "status": "present"}

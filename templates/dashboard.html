@@ -1,0 +1,71 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HR Academy</title>
+{% include "_style.html" %}
+<style>
+  body { max-width: 30rem; margin: 0 auto; }
+
+  header { display: flex; justify-content: flex-end; margin: 0 0 1.3rem; }
+  .logout {
+    display: inline-flex; align-items: center; min-height: var(--tap);
+    padding: 0 .7rem; margin-right: -.7rem;   /* tap area without visual bulk */
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft); text-decoration: none;
+    font-size: .9rem; font-weight: 550;
+    transition: color .14s ease, background-color .14s ease;
+  }
+  .logout:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
+
+  .tiles { display: grid; gap: .7rem; margin: 0 0 1.5rem; }
+  .tile {
+    display: block; padding: 1.15rem 1.2rem;
+    border-radius: var(--radius);
+    font-size: 1.06rem; font-weight: 570; letter-spacing: -.01em;
+    text-decoration: none;
+  }
+
+  /* Live: raised off the page, full-strength text, green edge, and it moves
+     when pressed. */
+  a.tile {
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line); border-left: 4px solid var(--green);
+    box-shadow: var(--edge), var(--lift);
+    transition: transform .1s ease, border-color .14s ease;
+  }
+  a.tile:active { transform: scale(.985); }
+
+  /* Not yet built: sunk into the page instead of raised, no lit edge, no green,
+     no press state, and the cursor never becomes a pointer. Dimmed, but the
+     title stays at ~8:1 — this is information, not a disabled control, and a
+     label nobody can read reads as broken rather than as pending. */
+  .soon {
+    background: rgba(0, 0, 0, .22); color: var(--ink-soft);
+    border: 1px dashed var(--line-strong); border-left: 4px dashed var(--line-strong);
+    cursor: default;
+  }
+  .soon span {
+    display: block; margin-top: .25rem;
+    font-size: .7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink-faint);
+  }
+
+  .who {
+    margin: 0; text-align: center;
+    font-size: .9rem; color: var(--ink-faint);
+  }
+</style>
+
+<header>
+  <a class="logout" href="/logout">Log out</a>
+</header>
+
+{# The two placeholders are plain divs, not links or disabled buttons. Nothing
+   to focus, nothing to press, no href to 404 — they cannot be mistaken for a
+   broken target because they were never a target. #}
+<nav class="tiles">
+  <a class="tile" href="/entries">Today's Entries</a>
+  <div class="tile soon">Onboard a New Student<span>coming soon</span></div>
+  <div class="tile soon">Student Data<span>coming soon</span></div>
+</nav>
+
+<p class="who">Signed in as {{ user.name }}</p>

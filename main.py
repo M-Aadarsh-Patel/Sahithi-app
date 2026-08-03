@@ -155,7 +155,22 @@ def login(
     # overnight would still be valid in the morning, because the first request
     # would find no last_seen to measure against and simply stamp a fresh one.
     request.session["last_seen"] = datetime.now(IST).isoformat()
-    return RedirectResponse("/entries", status_code=303)
+    return RedirectResponse("/dashboard", status_code=303)
+
+
+@app.get("/logout")
+def logout(request: Request) -> RedirectResponse:
+    """No current_user dependency on purpose: logging out of an already-expired
+    session must still clear the cookie rather than bounce off the guard."""
+    request.session.clear()
+    return RedirectResponse("/login", status_code=303)
+
+
+@app.get("/dashboard")
+def dashboard(
+    request: Request, user: Annotated[dict[str, Any], Depends(current_user)]
+) -> Response:
+    return templates.TemplateResponse(request, "dashboard.html", {"user": user})
 
 
 @app.get("/entries")
