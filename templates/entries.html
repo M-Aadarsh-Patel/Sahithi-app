@@ -14,23 +14,29 @@
     flex-wrap: wrap;
     align-items: center;
     gap: .45rem .55rem;
-    padding: .7rem .85rem;
-    margin: 0 0 .8rem;
-    border-radius: var(--radius);
+    padding: .75rem .9rem;
+    margin: 0 0 .7rem;
+    border: 1px solid var(--line);
     border-left: 4px solid var(--amber);
+    border-radius: var(--radius);
     background: var(--amber-tint);
+    box-shadow: var(--edge), var(--lift);
   }
   .datebar:has(.today) { background: var(--green-tint); border-left-color: var(--green); }
 
   .datebar .current {
-    font-size: 1.12rem; font-weight: 640; letter-spacing: -.012em;
-    margin-right: .15rem;
+    font-size: 1.18rem; font-weight: 650; letter-spacing: -.018em;
+    margin-right: .1rem;
   }
+  /* A translucent chip rather than a colour of its own. On a tinted bar it
+     lifts with the surface instead of punching a hole in it — the previous
+     opaque fill was a light-theme leftover reading at 2.6:1 here. */
   .datebar .today {
-    font-size: .68rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .09em; color: var(--green);
-    background: rgba(255, 255, 255, .75);
-    border-radius: 999px; padding: .2rem .5rem;
+    font-size: .66rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink);
+    background: rgba(255, 255, 255, .09);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
+    border-radius: 999px; padding: .22rem .5rem .2rem;
   }
   .datebar a {
     display: inline-flex; align-items: center; min-height: var(--tap);
@@ -38,22 +44,26 @@
     border-radius: var(--radius-sm);
     color: var(--ink-soft); text-decoration: none;
     font-size: .88rem; font-weight: 550;
+    transition: color .13s ease, background-color .13s ease;
   }
+  .datebar a:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
   /* Its own full-width line. Prev, date, badge, next and a date field will not
      share 360px without overflowing. */
   #picker {
     flex: 1 0 100%; min-width: 0; min-height: var(--tap);
     padding: 0 .6rem;
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-    background: var(--card); color: var(--ink);
+    background: rgba(0, 0, 0, .25); color: var(--ink);
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---- Search ---------------------------------------------------------- */
   #search {
     width: 100%; min-height: var(--tap);
-    padding: 0 .85rem; margin: 0 0 1rem;
+    padding: 0 .85rem; margin: 0 0 .9rem;
     background: var(--card); color: var(--ink);
     border: 1px solid var(--line-strong); border-radius: 10px;
+    box-shadow: var(--edge);
   }
   #search::placeholder { color: var(--ink-faint); }
 
@@ -74,17 +84,24 @@
     border: 1px solid var(--line);
     border-left: 4px solid var(--line-strong);
     border-radius: var(--radius);
+    box-shadow: var(--edge), var(--lift);
+    transition: border-left-color .16s ease, background-color .16s ease;
   }
   /* .row sets display:grid, which would otherwise beat the browser's own
      [hidden] { display: none } and leave hidden rows on screen. */
   .row[hidden] { display: none; }
 
-  .name    { grid-area: 1 / 1 / 2 / 5; font-weight: 570; letter-spacing: -.008em;
+  .name    { grid-area: 1 / 1 / 2 / 5; font-size: 1.02rem; font-weight: 560;
+             letter-spacing: -.012em; line-height: 1.25;
              overflow-wrap: anywhere; }
+  /* Set on its own dark plate so a column of roll numbers reads as an index
+     down the right edge rather than as more sentence. */
   .roll    { grid-area: 1 / 5 / 2 / 7; justify-self: end;
              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-             font-size: .82rem; font-variant-numeric: tabular-nums;
-             color: var(--ink-faint); }
+             font-size: .74rem; font-variant-numeric: tabular-nums;
+             letter-spacing: .01em; color: var(--ink-faint);
+             background: rgba(0, 0, 0, .28); border-radius: 6px;
+             padding: .15rem .42rem; }
   .present { grid-area: 2 / 1 / 3 / 3; }
   .absent  { grid-area: 2 / 3 / 3 / 5; }
   .tick    { grid-area: 2 / 5 / 3 / 6; justify-self: center; }
@@ -99,11 +116,22 @@
   /* ---- Toggle ---------------------------------------------------------- */
   .present, .absent {
     min-height: var(--tap);
-    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-    background: var(--paper); color: var(--ink-soft);
-    font-size: .9rem; font-weight: 550; cursor: pointer;
-    transition: background-color .13s ease, border-color .13s ease, color .13s ease;
+    border: 1px solid var(--line-strong);
+    background: rgba(0, 0, 0, .25); color: var(--ink-soft);
+    font-size: .9rem; font-weight: 550; letter-spacing: .005em; cursor: pointer;
+    transition: background-color .14s ease, border-color .14s ease,
+                color .14s ease, transform .1s ease;
   }
+  /* One control, two halves, rather than two unrelated pills: the outer corners
+     round, the inner ones square, and the negative margin closes the grid gap so
+     the two borders meet as a single shared edge. It reads as either/or, which
+     is what it is. */
+  .present {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    margin-right: calc(-.45rem - 1px);
+  }
+  .absent { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
   /* Three states. Unmarked is the quiet default, i.e. no entry document. */
   .row.is-present .present {
     background: var(--green); border-color: var(--green); color: #fff;
@@ -111,29 +139,43 @@
   .row.is-absent .absent {
     background: var(--terracotta); border-color: var(--terracotta); color: #fff;
   }
+  /* A phone has no hover, so a tap that changes nothing for 200ms feels broken.
+     This lands before the optimistic repaint does. */
+  .present:active, .absent:active { transform: scale(.97); }
   /* The left edge repeats the state, so progress down a list of 41 is legible
      from a scroll rather than by reading each toggle. */
   .row.is-present { border-left-color: var(--green); }
   .row.is-absent  { border-left-color: var(--terracotta); }
 
   /* ---- Topics and remark ----------------------------------------------- */
+  /* Sunk below the card rather than raised on it, so an empty topic box reads
+     as a slot waiting for text instead of another button. */
   .topic, .remark input {
     width: 100%; min-width: 0; min-height: var(--tap);
-    padding: 0 .6rem;
-    background: var(--paper); color: var(--ink);
+    padding: 0 .65rem;
+    background: rgba(0, 0, 0, .25); color: var(--ink);
     border: 1px solid var(--line); border-radius: var(--radius-sm);
+    transition: border-color .14s ease, background-color .14s ease,
+                box-shadow .14s ease;
   }
   .topic::placeholder, .remark input::placeholder { color: var(--ink-faint); }
-  .topic:focus, .remark input:focus { background: var(--card); }
+  .topic:focus, .remark input:focus, #search:focus, #picker:focus {
+    outline: none;
+    background: rgba(0, 0, 0, .38);
+    border-color: var(--focus);
+    box-shadow: var(--focus-ring);
+  }
 
   .remark summary {
     display: flex; align-items: center; justify-content: center;
     min-height: var(--tap);
     border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: var(--paper); color: var(--ink-soft);
+    background: rgba(0, 0, 0, .25); color: var(--ink-soft);
     font-size: 1.05rem; cursor: pointer;
     list-style: none;                       /* drop the disclosure triangle */
+    transition: background-color .14s ease, color .14s ease, transform .1s ease;
   }
+  .remark summary:active { transform: scale(.97); }
   .remark summary::-webkit-details-marker { display: none; }
   /* Only when open, so a closed <details> keeps the browser's own rule that
      hides everything but the summary. */
@@ -147,16 +189,28 @@
 
   /* ---- Saved and failed ------------------------------------------------ */
   .tick { color: var(--green); font-size: 1.05rem; line-height: 1; }
+  /* Amber, not the rose used for absent. A failed save and an absent student are
+     different kinds of thing, and in rose they were near-identical at a glance:
+     both a red-family border on the same row. Amber already means "look here"
+     on the date bar and carries no student meaning at all. */
   .retry {
     display: none; min-height: var(--tap);
-    border: 1px solid var(--terracotta); border-radius: var(--radius-sm);
-    background: var(--card); color: var(--terracotta);
+    border: 1px solid var(--amber); border-radius: var(--radius-sm);
+    background: rgba(217, 164, 65, .14); color: var(--amber);
     font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background-color .14s ease, transform .1s ease;
   }
+  .retry:active { transform: scale(.97); background: rgba(217, 164, 65, .26); }
+  /* The tint alone sits 1.1:1 off the card — invisible. The ring and the
+     coloured spill around the row are what actually carry "this did not save"
+     down a fast scroll. */
   .row.failed {
-    border-color: var(--terracotta);
-    border-left-color: var(--terracotta);
-    background: var(--terracotta-tint);
+    border-color: var(--amber);
+    border-left-color: var(--amber);
+    background: var(--amber-tint);
+    box-shadow: var(--edge),
+                0 0 0 1px rgba(217, 164, 65, .28),
+                0 2px 12px rgba(217, 164, 65, .12);
   }
   .row.failed .retry { display: block; }
 </style>
