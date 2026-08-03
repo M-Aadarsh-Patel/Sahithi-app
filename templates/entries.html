@@ -17,7 +17,13 @@
   /* .row sets display:flex, which would otherwise beat the browser's own
      [hidden] { display: none } and leave hidden rows on screen. */
   .row[hidden] { display: none; }
-  .roll { font-family: monospace; color: #666; margin-right: auto; }
+  .roll { font-family: monospace; color: #666; }
+  /* Enough to be usable on the row; §8 item 5 is the real mobile pass. */
+  .topic { flex: 1; min-width: 4rem; min-height: 40px; padding: 0 .4rem; }
+  .remark summary { min-height: 40px; line-height: 40px; padding: 0 .5rem;
+                    cursor: pointer; list-style: none; }
+  .remark summary::-webkit-details-marker { display: none; }
+  .remark input { min-height: 40px; padding: 0 .4rem; }
   button { min-height: 40px; padding: 0 .8rem;          /* §5.3 tap target */
            background: #ddd; border: 1px solid #bbb; border-radius: 4px; }
   /* Three states. Unmarked is the default grey, i.e. no entry document. */
@@ -40,7 +46,7 @@
 <input id="search" type="search" placeholder="Search name or roll number">
 <ul>
   {% for student in students %}
-    {% with status = status_by_id.get(student._id) %}
+    {% with entry = entry_by_id.get(student._id) %}
       {% include "row.html" %}
     {% endwith %}
   {% endfor %}
@@ -69,17 +75,35 @@
   // server confirmed, mark it, and offer the same tap again. A successful retry
   // swaps the whole <li>, which drops .failed with it.
   function markFailed(event) {
-    const button = event.detail.elt;
-    const row = button.closest(".row");
+    const source = event.detail.elt;
+    const row = source.closest(".row");
     setState(row, row.dataset.status);
+    // A tick next to a red border claims the save worked and failed at once. It
+    // comes back on the next success — the toggle's swap renders it, the inputs'
+    // afterRequest handler reveals it.
+    row.querySelector(".tick").hidden = true;
     row.classList.add("failed");
     row.querySelector(".retry").onclick = () => {
       row.classList.remove("failed");
-      button.click();
+      // Re-fire whatever failed, the way that control fires. Clicking a topic
+      // input would do nothing — it saves on blur.
+      if (source.tagName === "INPUT") source.dispatchEvent(new Event("blur"));
+      else source.click();
     };
   }
   document.body.addEventListener("htmx:responseError", markFailed);
   document.body.addEventListener("htmx:sendError", markFailed);
+
+  // The topics and the remark save with hx-swap="none", so no server-rendered
+  // row arrives carrying the tick. Reveal the row's own instead. detail.successful
+  // is only set on a real response — an aborted or failed save leaves it undefined,
+  // so a superseded save cannot tick.
+  document.body.addEventListener("htmx:afterRequest", (event) => {
+    const source = event.detail.elt;
+    if (!event.detail.successful || source.tagName !== "INPUT") return;
+    const row = source.closest(".row");
+    if (row) row.querySelector(".tick").hidden = false;
+  });
 
   // The picker is a plain navigation control: pick a day, load that day.
   document.getElementById("picker").addEventListener("change", (event) => {

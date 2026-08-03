@@ -1,9 +1,13 @@
-{# data-status is the last state the server confirmed. The class is what is on
+{# One row, rendered by GET /entries/{date} and returned again by POST /entries.
+   `entry` is the saved document or None — every field reads through `or ''`, so
+   a student with no document renders grey with empty boxes.
+
+   data-status is the last state the server confirmed. The class is what is on
    screen, which a tap changes before the save lands — so a failed save has
    something true to revert to rather than the guess it just painted. #}
 <li id="row-{{ student._id }}"
-    class="row is-{{ status or 'unmarked' }}"
-    data-status="{{ status or 'unmarked' }}"
+    class="row is-{{ entry.status or 'unmarked' }}"
+    data-status="{{ entry.status or 'unmarked' }}"
     hx-target="#row-{{ student._id }}"
     hx-swap="outerHTML"
     {# Both buttons inherit this and resolve "closest li" to this same row, so a
@@ -19,6 +23,35 @@
           hx-post="/entries" hx-vals='{"status": "present"}'>present</button>
   <button class="absent" onclick="optimistic(this, 'absent')"
           hx-post="/entries" hx-vals='{"status": "absent"}'>absent</button>
+
+  {# Topics and remark save themselves on blur, each sending only its own field,
+     so none of them can overwrite the toggle or each other.
+
+     hx-swap="none" because the reply is a whole row: swapping it while she is
+     typing in the next box would replace that box mid-word and take the focus
+     with it. The save still happens, and a failure still reaches markFailed.
+
+     hx-sync="this:replace" overrides the row's rule above. Inheriting it would
+     mean blurring a topic aborts an in-flight save of the toggle. Scoped to the
+     input, only a second save of the same box replaces the first. #}
+  <input class="topic" name="slot_1" value="{{ entry.slot_1 or '' }}"
+         placeholder="slot 1" autocomplete="off"
+         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+  <input class="topic" name="slot_2" value="{{ entry.slot_2 or '' }}"
+         placeholder="slot 2" autocomplete="off"
+         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+
+  {# <details> is the expandable field, with no JavaScript to make it open. #}
+  <details class="remark">
+    <summary title="Remark">✎</summary>
+    <input name="remark" value="{{ entry.remark or '' }}"
+           placeholder="remark" autocomplete="off"
+           hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+  </details>
+
   <button class="retry" type="button">retry</button>
-  {% if saved %}<span class="tick">✓</span>{% endif %}
+  {# Always in the markup, hidden until something saves. The toggle's swap brings
+     it back already visible; the inputs do not swap, so their handler reveals
+     this same span rather than building a second kind of tick. #}
+  <span class="tick" {% if not saved %}hidden{% endif %}>✓</span>
 </li>

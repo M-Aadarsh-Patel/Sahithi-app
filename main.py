@@ -7,6 +7,7 @@ from bson import ObjectId
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from pymongo import ReturnDocument
 from starlette.middleware.sessions import SessionMiddleware
 
 # Importing db also loads .env and fails a missing or malformed MONGO_URI at
@@ -99,6 +100,21 @@ def current_user(request: Request) -> dict[str, Any]:
     return user
 
 
+async def submitted_fields(request: Request) -> set[str]:
+    """Which field names the request actually carried.
+
+    FastAPI cannot answer this on its own. For a Form parameter with a default it
+    treats an empty value as missing and hands back the default, so "" and "not
+    sent" both arrive as None — and clearing a topic would be indistinguishable
+    from a status save that never mentioned it. Starlette caches the parsed form,
+    so reading it here costs nothing extra.
+
+    async because request.form() is, while save_entry stays sync so its blocking
+    pymongo calls keep running in the threadpool rather than on the event loop.
+    """
+    return set((await request.form()).keys())
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -151,11 +167,13 @@ def entries(
         db.students.find({"teacher_id": user["_id"], "is_active": True}).sort("roll_no")
     )
     # One extra query, not one per row. A student with no document here is simply
-    # missing from the map, which is what renders the row grey.
+    # missing from the map, which is what renders the row grey and its fields
+    # empty. The whole document is kept now, not just the status, because the row
+    # renders the topics and the remark too.
     existing = db.entries.find(
         {"date": date, "student_id": {"$in": [s["_id"] for s in students]}}
     )
-    status_by_id = {e["student_id"]: e["status"] for e in existing}
+    entry_by_id = {e["student_id"]: e for e in existing}
     return templates.TemplateResponse(
         request,
         "entries.html",
@@ -166,7 +184,7 @@ def entries(
             "next_date": (day + timedelta(days=1)).isoformat(),
             "today": today_ist(),
             "students": students,
-            "status_by_id": status_by_id,
+            "entry_by_id": entry_by_id,
         },
     )
 
@@ -177,10 +195,20 @@ def save_entry(
     user: Annotated[dict[str, Any], Depends(current_user)],
     student_id: Annotated[str, Form()],
     date: Annotated[str, Form()],
-    # Literal rejects anything that is not exactly one of these two, with a 422,
-    # before the handler body runs. §3.4: unmarked is the absence of a document,
-    # not a third status, so there is no value here that means "not marked".
-    status: Annotated[Literal["present", "absent"], Form()],
+    # Which keys were really in the body. See submitted_fields — these four all
+    # arrive as None when cleared, so the values alone cannot say what was sent.
+    present: Annotated[set[str], Depends(submitted_fields)],
+    # Every field below is optional because each control saves on its own: the
+    # toggle sends status and nothing else, a topic input sends that topic and
+    # nothing else.
+    #
+    # Literal still rejects anything that is not exactly one of these two, with a
+    # 422 before the handler body runs. §3.4: unmarked is the absence of a
+    # document, not a third status, so there is no value here meaning "unmarked".
+    status: Annotated[Literal["present", "absent"] | None, Form()] = None,
+    slot_1: Annotated[str | None, Form()] = None,
+    slot_2: Annotated[str | None, Form()] = None,
+    remark: Annotated[str | None, Form()] = None,
 ) -> Response:
     # Guard only — the write keys off the raw string. Runs before the student
     # lookup so a bad date costs no query.
@@ -194,21 +222,43 @@ def save_entry(
     if student is None:
         raise HTTPException(status_code=404, detail="No such student")
 
+    # Only what the request actually carried. A topic save therefore cannot
+    # overwrite status, and a status save cannot wipe a topic, because a field
+    # nobody sent never reaches $set at all.
+    changes: dict[str, Any] = {}
+    for field, value in (("slot_1", slot_1), ("slot_2", slot_2), ("remark", remark)):
+        if field in present:
+            # None here means she emptied the box, which is a real edit. Blank is
+            # never validated and never rejected — §6, topics are free text.
+            changes[field] = value or ""
+    # Not keyed off `present`: an empty status is not a state a row can be in, so
+    # it is written only when it arrived as one of the two literals.
+    if status is not None:
+        changes["status"] = status
+
+    if not changes:
+        # Nothing to write. Without this an empty POST would upsert a document
+        # holding no data at all, and §3.4 has no room for one.
+        raise HTTPException(status_code=400, detail="Nothing to save")
+
     now = datetime.now(IST)
-    db.entries.update_one(
+    entry = db.entries.find_one_and_update(
         # §3.4 compound key. On insert Mongo copies these two fields out of the
         # filter into the new document, so they never need setting explicitly.
         {"student_id": student["_id"], "date": date},
         {
-            "$set": {"status": status, "teacher_id": user["_id"], "updated_at": now},
+            "$set": {**changes, "teacher_id": user["_id"], "updated_at": now},
             "$setOnInsert": {"created_at": now},
         },
         upsert=True,
+        # The merged document, in the same round trip. The row renders every
+        # field, so it needs the fields this request did not touch as well.
+        return_document=ReturnDocument.AFTER,
     )
     # saved=True is what draws the tick. A GET never sets it, so the tick means
     # "just written", not "has a value".
     return templates.TemplateResponse(
         request,
         "row.html",
-        {"student": student, "date": date, "status": status, "saved": True},
+        {"student": student, "date": date, "entry": entry, "saved": True},
     )
