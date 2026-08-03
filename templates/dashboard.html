@@ -3,7 +3,17 @@
 <title>HR Academy</title>
 {% include "_style.html" %}
 <style>
-  body { max-width: 30rem; margin: 0 auto; }
+  /* Full-height flex column so the signed-in line can be pushed to the foot of
+     the page. min-height, not height: on a short window the page grows and
+     scrolls normally instead of the tiles being clipped. svh is the viewport
+     height that does not change when browser chrome hides, so the line does not
+     drift mid-scroll. */
+  body {
+    max-width: 30rem; margin: 0 auto;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
 
   header { display: flex; justify-content: flex-end; margin: 0 0 1.3rem; }
   .logout {
@@ -49,8 +59,10 @@
     letter-spacing: .1em; color: var(--ink-faint);
   }
 
+  /* auto top margin eats all the leftover column space, which parks this at the
+     bottom. The body's own bottom padding already clears the home indicator. */
   .who {
-    margin: 0; text-align: center;
+    margin: auto 0 0; text-align: center;
     font-size: .9rem; color: var(--ink-faint);
   }
 </style>
