@@ -170,7 +170,23 @@ def logout(request: Request) -> RedirectResponse:
 def dashboard(
     request: Request, user: Annotated[dict[str, Any], Depends(current_user)]
 ) -> Response:
-    return templates.TemplateResponse(request, "dashboard.html", {"user": user})
+    # The one new query. count_documents rather than fetching the roster, since
+    # only the number is shown — it is served straight off the
+    # (teacher_id, is_active) index the seed script creates.
+    student_count = db.students.count_documents(
+        {"teacher_id": user["_id"], "is_active": True}
+    )
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {
+            "user": user,
+            "student_count": student_count,
+            # Same IST clock and the same format the entries date bar shows, so
+            # the two screens never disagree about what day it is.
+            "today": datetime.now(IST).strftime("%a %d %b"),
+        },
+    )
 
 
 @app.get("/entries")

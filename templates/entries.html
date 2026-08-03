@@ -24,8 +24,19 @@
   }
   .datebar:has(.today) { background: var(--green-tint); border-left-color: var(--green); }
 
+  /* This is the page's heading — it carries the one fact the screen is about —
+     so it takes the same face, weight and tracking as the dashboard's.
+
+     Fluid rather than the dashboard's flat 34px, because it lives inside the bar
+     and has to share line 1 with the prev link, the badge and the next link. The
+     clamp floor keeps it readable at 320px; the ceiling stops it running away on
+     a wide window. line-height 1.15 keeps the tallest size's line box under the
+     44px tap targets either side of it, so the bar does not grow and the first
+     student row does not move down. */
   .datebar .current {
-    font-size: 1.18rem; font-weight: 650; letter-spacing: -.018em;
+    font-family: var(--font-heading);
+    font-size: clamp(1.3rem, 6vw, 1.75rem);
+    font-weight: 700; letter-spacing: -.02em; line-height: 1.15;
     margin-right: .1rem;
   }
   /* A translucent chip rather than a colour of its own. On a tinted bar it

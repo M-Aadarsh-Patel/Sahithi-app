@@ -29,7 +29,10 @@
   /* The logo says "HR ACADEMY" itself, so the heading's text would have been a
      second copy of it. The <h1> stays as the page's heading and the alt text
      carries the name. */
-  h1 { margin: 0 0 2.4rem; }
+  /* Declared for parity with the other two screens' headings, though it changes
+     nothing today: this h1's content is the logo image, not text. It matters the
+     moment any words are added beside or below the mark. */
+  h1 { margin: 0 0 2.4rem; font-family: var(--font-heading); }
   .logo {
     display: block; margin: 0 auto;
     width: min(18rem, 88%); height: auto;

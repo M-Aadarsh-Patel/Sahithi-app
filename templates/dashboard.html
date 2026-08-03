@@ -3,20 +3,31 @@
 <title>HR Academy</title>
 {% include "_style.html" %}
 <style>
-  /* Full-height flex column so the signed-in line can be pushed to the foot of
-     the page. min-height, not height: on a short window the page grows and
-     scrolls normally instead of the tiles being clipped. svh is the viewport
-     height that does not change when browser chrome hides, so the line does not
-     drift mid-scroll. */
-  body {
-    max-width: 30rem; margin: 0 auto;
-    min-height: 100svh;
-    display: flex;
-    flex-direction: column;
+  body { max-width: 30rem; margin: 0 auto; }
+
+  /* Two columns, four rows. Row 1 is the logo with the logout link opposite it;
+     the heading, the welcome and the meta line each span both columns below, so
+     they all start on the logo's left edge. align-items: center is what puts the
+     logout link on the logo's centre line rather than at the top of the row.
+
+     The hairline is the header's own bottom border — one element, no extra
+     divider in the markup, and it closes the block before the tiles begin. */
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 1rem;
+    padding-bottom: 1.15rem;
+    margin: 0 0 1.3rem;
+    border-bottom: 1px solid var(--line);
   }
 
-  header { display: flex; justify-content: flex-end; margin: 0 0 1.3rem; }
+  /* 120px wide; the height follows the file's own 1036x381 and lands at ~44px,
+     the same as the logout link's tap target, so the two sit level in row 1. */
+  .logo { grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto; }
+
   .logout {
+    grid-row: 1; grid-column: 2; justify-self: end;
     display: inline-flex; align-items: center; min-height: var(--tap);
     padding: 0 .7rem; margin-right: -.7rem;   /* tap area without visual bulk */
     border-radius: var(--radius-sm);
@@ -26,16 +37,66 @@
   }
   .logout:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
 
-  .tiles { display: grid; gap: .7rem; margin: 0 0 1.5rem; }
-  .tile {
-    display: block; padding: 1.15rem 1.2rem;
-    border-radius: var(--radius);
-    font-size: 1.06rem; font-weight: 570; letter-spacing: -.01em;
-    text-decoration: none;
+  /* The top margin is the breathing room under the logo — put here rather than
+     on the logo, so it does not grow row 1 and drag the logout link off the
+     logo's centre line. line-height 1.1 because the body's 1.5 would leave a
+     34px word sitting in a 51px box with the space all in the wrong places. */
+  h1 {
+    grid-row: 2; grid-column: 1 / -1;
+    margin: .9rem 0 0;
+    font-family: var(--font-heading);
+    font-size: 2.125rem; font-weight: 700; letter-spacing: -.03em;
+    line-height: 1.1;
   }
 
-  /* Live: raised off the page, full-strength text, green edge, and it moves
-     when pressed. */
+  .who {
+    grid-row: 3; grid-column: 1 / -1;
+    margin: .3rem 0 0;
+    font-size: 1.0625rem; color: var(--ink-soft);
+  }
+
+  /* Icon and text on one baseline. The middot is a literal character between two
+     values rather than a border or a pseudo-element, so it wraps with them if
+     the line ever runs out of room. */
+  .meta {
+    grid-row: 4; grid-column: 1 / -1;
+    margin: .5rem 0 0;
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .8125rem; color: var(--ink-faint);
+  }
+  .meta .ti { font-size: 1rem; }
+
+  /* ---- Tiles ----------------------------------------------------------- */
+  /* Icon, text, trailing glyph. The middle column is the only one that grows,
+     so the icons stay put down the column and the titles all start at the same
+     x whatever their length. */
+  .tiles { display: grid; gap: .7rem; margin: 0; }
+  .tile {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: .85rem;
+    padding: 1rem 1.1rem;                             /* 16px vertical */
+    /* Square where the coloured edge is, rounded away from it — the edge reads
+       as a bar attached to the tile rather than a stripe inside a pill. Applied
+       to the placeholders too, so the three share one silhouette. */
+    border-radius: 0 var(--radius) var(--radius) 0;
+    text-decoration: none;
+  }
+  .tile .ti { font-size: 1.5rem; }
+  .tile-text { min-width: 0; }
+  .tile-title {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 1rem; font-weight: 500; letter-spacing: -.01em; line-height: 1.2;
+  }
+  .tile-sub {
+    display: block; margin-top: .1rem;
+    font-size: .8125rem; line-height: 1.2; color: var(--ink-faint);
+  }
+
+  /* Live: raised off the page, full-strength text, green edge and icon, and it
+     moves when pressed. */
   a.tile {
     background: var(--card); color: var(--ink);
     border: 1px solid var(--line); border-left: 4px solid var(--green);
@@ -43,41 +104,67 @@
     transition: transform .1s ease, border-color .14s ease;
   }
   a.tile:active { transform: scale(.985); }
+  a.tile .ti-checkbox { color: var(--green); }
+  a.tile .ti-chevron-right { font-size: 1.15rem; color: var(--ink-faint); }
 
-  /* Not yet built: sunk into the page instead of raised, no lit edge, no green,
-     no press state, and the cursor never becomes a pointer. Dimmed, but the
-     title stays at ~8:1 — this is information, not a disabled control, and a
-     label nobody can read reads as broken rather than as pending. */
+  /* Not yet built: sunk into the page instead of raised, dashed rather than
+     solid, no green, no press state, and the cursor never becomes a pointer.
+     Dimmed, but the title stays readable — this is information, not a disabled
+     control, and a label nobody can read reads as broken rather than as
+     pending. There is no trailing glyph, because nothing follows a tap. */
   .soon {
     background: rgba(0, 0, 0, .22); color: var(--ink-soft);
     border: 1px dashed var(--line-strong); border-left: 4px dashed var(--line-strong);
     cursor: default;
   }
-  .soon span {
-    display: block; margin-top: .25rem;
-    font-size: .7rem; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .1em; color: var(--ink-faint);
-  }
-
-  /* auto top margin eats all the leftover column space, which parks this at the
-     bottom. The body's own bottom padding already clears the home indicator. */
-  .who {
-    margin: auto 0 0; text-align: center;
-    font-size: .9rem; color: var(--ink-faint);
+  .soon .ti { color: var(--ink-faint); }
+  .soon .tile-title { color: var(--ink-soft); }
+  .soon .tile-sub {
+    font-size: .7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .1em;
   }
 </style>
 
+{# width/height are the intrinsic pixels, so the browser reserves the right box
+   before the file arrives and the heading below it never jumps. #}
 <header>
+  <img class="logo" src="/static/logo.png" alt="HR Academy" width="1036" height="381">
+  <h1>Dashboard</h1>
+  <p class="who">Welcome, {{ user.name }}</p>
+  <p class="meta">
+    <i class="ti ti-users" aria-hidden="true"></i>{{ student_count }} students · {{ today }}
+  </p>
   <a class="logout" href="/logout">Log out</a>
 </header>
 
-{# The two placeholders are plain divs, not links or disabled buttons. Nothing
+{# Every icon is decorative and hidden from assistive tech: each tile's name
+   comes from its own text, and a screen reader announcing "checkbox" before
+   "Today's entries" would only get in the way.
+
+   The two placeholders are plain divs, not links or disabled buttons. Nothing
    to focus, nothing to press, no href to 404 — they cannot be mistaken for a
    broken target because they were never a target. #}
 <nav class="tiles">
-  <a class="tile" href="/entries">Today's Entries</a>
-  <div class="tile soon">Onboard a New Student<span>coming soon</span></div>
-  <div class="tile soon">Student Data<span>coming soon</span></div>
+  <a class="tile" href="/entries">
+    <i class="ti ti-checkbox" aria-hidden="true"></i>
+    <span class="tile-text">
+      <span class="tile-title">Today's entries</span>
+      <span class="tile-sub">Attendance, topics, scores</span>
+    </span>
+    <i class="ti ti-chevron-right" aria-hidden="true"></i>
+  </a>
+  <div class="tile soon">
+    <i class="ti ti-user-plus" aria-hidden="true"></i>
+    <span class="tile-text">
+      <span class="tile-title">Onboard a new student</span>
+      <span class="tile-sub">Coming soon</span>
+    </span>
+  </div>
+  <div class="tile soon">
+    <i class="ti ti-chart-bar" aria-hidden="true"></i>
+    <span class="tile-text">
+      <span class="tile-title">Student data</span>
+      <span class="tile-sub">Coming soon</span>
+    </span>
+  </div>
 </nav>
-
-<p class="who">Signed in as {{ user.name }}</p>

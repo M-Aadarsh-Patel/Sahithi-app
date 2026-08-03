@@ -1,6 +1,20 @@
 {# Shared design tokens and base type. Included by entries.html and login.html.
    Inlined rather than served as a static file because mounting StaticFiles would
    mean editing main.py. #}
+{# Archivo at 500 and 700 only — the two weights the headings and tile titles
+   use, so none of the rest of the family is pulled. display=swap paints text in
+   the fallback immediately and swaps when Archivo lands, rather than holding it
+   invisible on a slow connection. The preconnects open the sockets early, since
+   the stylesheet and the font file come from different hosts.
+
+   Tabler pinned to an exact version, not @latest: a CDN that silently moves
+   under the app is the same failure mode as an unpinned requirements.txt. #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&display=swap">
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css">
 <style>
   :root {
     /* Dark, after the academy logo: a near-black field with off-white on it.
@@ -35,6 +49,10 @@
        one hue with no competition from either the logo or the two states. */
     --amber:          #d9a441;
     --amber-tint:     #2a2113;
+
+    /* Headings only. The fallbacks are the body stack verbatim, so if Archivo is
+       slow or blocked the swap shifts weight and spacing, not the whole face. */
+    --font-heading:   "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
     --focus:          #6ba3d0;
     --focus-ring:     0 0 0 3px rgba(107, 163, 208, .22);
