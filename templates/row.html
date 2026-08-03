@@ -6,6 +6,12 @@
     data-status="{{ status or 'unmarked' }}"
     hx-target="#row-{{ student._id }}"
     hx-swap="outerHTML"
+    {# Both buttons inherit this and resolve "closest li" to this same row, so a
+       second tap aborts the first tap's request instead of racing it. Without it
+       two POSTs are in flight at once and the one that lands last wins, which is
+       not necessarily the one she tapped last. Aborting fires htmx:sendAbort, not
+       htmx:sendError, so a superseded tap does not mark the row failed. #}
+    hx-sync="closest li:replace"
     hx-vals='{"student_id": "{{ student._id }}", "date": "{{ date }}"}'>
   <span class="name">{{ student.name }}</span>
   <span class="roll">{{ student.roll_no }}</span>
