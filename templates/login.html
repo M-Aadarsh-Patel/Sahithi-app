@@ -20,6 +20,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    /* The outermost of the three intervals. All three are gaps on one 8px base —
+       48 here, 24 inside the form, 8 inside the credential block — so the page
+       has a spacing scale rather than a set of one-off margins, and each level of
+       nesting is visibly a step tighter than the one containing it. */
+    gap: 3rem;
     padding-top: 2rem;
     padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     background: #0a0908;
@@ -32,11 +37,13 @@
   /* Declared for parity with the other two screens' headings, though it changes
      nothing today: this h1's content is the logo image, not text. It matters the
      moment any words are added beside or below the mark. */
-  h1 { margin: 0 0 2.4rem; font-family: var(--font-heading); }
-  .logo {
-    display: block; margin: 0 auto;
-    width: min(18rem, 88%); height: auto;
-  }
+  h1 { margin: 0; font-family: var(--font-heading); }
+  /* Full column width, not 88% of it. The PNG is trimmed — its ink runs to both
+     edges of the canvas — so a 100% box puts the mark's own left and right edges
+     exactly on the edges of the controls below it. At 88% the mark sat inset by
+     24px on each side, an offset that matched nothing else on the page and gave
+     a two-element composition three different vertical edges. */
+  .logo { display: block; width: 100%; height: auto; }
 
   /* ---- Arrival ---------------------------------------------------------- */
 
@@ -113,9 +120,25 @@
 
   /* ---- Controls --------------------------------------------------------- */
 
+  /* The page is a mark and a two-step task: say who you are, prove it, then go.
+     The two things you supply are one block; the button is what happens after it,
+     so it is the one thing set apart.
+
+     Three intervals, deliberately far apart — 38px under the mark, 8px inside the
+     block, 24px before the button. Before this the three gaps below the logo were
+     38 / 17.5 / 12.8, which is one interval repeated: four evenly stacked slabs
+     with no grouping in them at all. Worse, the tightest of the three sat between
+     the password and the button, binding an input to an action while pushing
+     apart the two fields that actually belong together. */
+  form { display: flex; flex-direction: column; gap: 1.5rem; }
+  .credentials { display: flex; flex-direction: column; gap: .5rem; }
+
+  /* Same .5rem as the block it sits in, so the pair of tiles and the field below
+     them are on one interval and the block reads as a single control surface
+     rather than as three things that happen to be near each other. */
   .profiles {
     display: grid; grid-template-columns: 1fr 1fr;
-    gap: .6rem; margin-bottom: 1.1rem;
+    gap: .5rem;
   }
   .profiles label {
     display: flex; align-items: center; justify-content: center;
@@ -146,7 +169,7 @@
      background this dark leaves a hole rather than a control. */
   #password {
     width: 100%; min-height: 3rem;
-    padding: 0 .85rem; margin-bottom: .8rem;
+    padding: 0 .85rem;
     background: var(--card); color: var(--ink);
     border: 1px solid var(--line-strong); border-radius: 10px;
     box-shadow: var(--edge);
@@ -209,7 +232,7 @@
      Bordered all round rather than on the left, so it sits centred with
      everything else instead of being anchored to one edge. */
   .error {
-    margin: 0 0 1.1rem; padding: .7rem .85rem;
+    margin: 0; padding: .7rem .85rem;
     background: var(--amber-tint); color: var(--amber);
     border: 1px solid rgba(217, 164, 65, .35);
     border-radius: var(--radius-sm); font-size: .92rem;
@@ -243,15 +266,21 @@
 {# width/height are the intrinsic pixels, so the browser reserves the right box
    before the file arrives and the form below it never jumps. #}
 <h1><img class="logo" src="/static/logo.png" alt="HR Academy" width="1036" height="381"></h1>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" action="/login">
-  {# Radios, not submit buttons. Two submit buttons gave the form a default one,
-     so pressing Enter silently signed in as whoever came first in the markup. #}
-  <div class="profiles">
-    <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
-    <label><input type="radio" name="username" value="nithya" required>Nithya</label>
+  {# The error moved inside this block and under the form. It is about what was
+     typed, not about the page, so it groups with the fields it describes — and
+     above them, so eye order and screen-reader order both reach it before the
+     inputs it is talking about. #}
+  <div class="credentials">
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {# Radios, not submit buttons. Two submit buttons gave the form a default one,
+       so pressing Enter silently signed in as whoever came first in the markup. #}
+    <div class="profiles">
+      <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
+      <label><input type="radio" name="username" value="nithya" required>Nithya</label>
+    </div>
+    <input id="password" type="password" name="password" placeholder="Password" required>
   </div>
-  <input id="password" type="password" name="password" placeholder="Password" required>
   <button id="signin" type="submit">Sign in</button>
 </form>
 
