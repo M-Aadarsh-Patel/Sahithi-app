@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="en">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign in</title>
 {% include "_style.html" %}
@@ -120,6 +121,18 @@
 
   /* ---- Controls --------------------------------------------------------- */
 
+  /* Names for things whose meaning is carried visually. The logo says the name of
+     the academy, the two tiles say who is signing in, and the field's placeholder
+     says "Password" — all of which a screen reader either cannot see or loses the
+     moment the field has a value. These labels are the same words, in the DOM,
+     for anyone not reading the picture. */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+
   /* The page is a mark and a two-step task: say who you are, prove it, then go.
      The two things you supply are one block; the button is what happens after it,
      so it is the one thing set apart.
@@ -144,15 +157,28 @@
     display: flex; align-items: center; justify-content: center;
     min-height: 3.5rem;
     background: var(--card); color: var(--ink-soft);
-    border: 1px solid var(--line-strong); border-radius: 10px;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     font-weight: 550; cursor: pointer;
     box-shadow: var(--edge), var(--lift);
     transition: background-color .14s ease, border-color .14s ease,
                 color .14s ease, transform .1s ease;
   }
+  /* :not(:has(input:checked)) rather than ordering this before the checked rule —
+     the two selectors compute to the same specificity, so without it whichever
+     came last would win and hovering the tile you already picked would pull it
+     back out of its selected colour. A committed choice does not react to the
+     pointer passing over it. */
+  @media (hover: hover) {
+    .profiles label:not(:has(input:checked)):hover {
+      color: var(--ink); border-color: var(--ink-faint);
+    }
+    #signin:hover { transform: translateY(-1px); }
+  }
   .profiles label:active { transform: scale(.98); }
-  /* Off-screen rather than display:none, so the radio stays keyboard-reachable
-     and announced by screen readers. */
+  /* Transparent and out of flow rather than display:none, which would take the
+     radio out of the tab order and hide it from screen readers entirely. It
+     stays exactly where it would have sat inside the label, so focus lands in
+     the right place on the page. */
   .profiles input { position: absolute; opacity: 0; }
   /* A whole tile going solid green is already the loudest state change on the
      page. Adding a green glow under it was decoration on top of a signal that
@@ -171,7 +197,7 @@
     width: 100%; min-height: 3rem;
     padding: 0 .85rem;
     background: var(--card); color: var(--ink);
-    border: 1px solid var(--line-strong); border-radius: 10px;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     box-shadow: var(--edge);
     text-align: center;
     transition: border-color .14s ease, box-shadow .14s ease;
@@ -199,8 +225,8 @@
     position: relative; overflow: hidden;
     width: 100%; min-height: 3rem;
     background: var(--ink); color: var(--paper);
-    border: 1px solid var(--ink); border-radius: 10px;
-    font-size: 1rem; font-weight: 640; letter-spacing: -.005em; cursor: pointer;
+    border: 1px solid var(--ink); border-radius: var(--radius-sm);
+    font-size: 1rem; font-weight: 600; letter-spacing: -.005em; cursor: pointer;
     box-shadow: var(--lift);
     transition: transform .1s ease, opacity .14s ease;
   }
@@ -272,14 +298,25 @@
      above them, so eye order and screen-reader order both reach it before the
      inputs it is talking about. #}
   <div class="credentials">
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {% if error %}<p class="error" id="login-error">{{ error }}</p>{% endif %}
     {# Radios, not submit buttons. Two submit buttons gave the form a default one,
-       so pressing Enter silently signed in as whoever came first in the markup. #}
-    <div class="profiles">
+       so pressing Enter silently signed in as whoever came first in the markup.
+
+       The fieldset is what gives the pair a name. Without it a screen reader
+       announces "Sahithi, radio button, 1 of 2" with nothing saying what is being
+       chosen — the question is asked only by the two tiles being the first thing
+       under the logo, which is not a thing you can hear. #}
+    <fieldset class="profiles">
+      <legend class="sr-only">Who is signing in?</legend>
       <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
       <label><input type="radio" name="username" value="nithya" required>Nithya</label>
-    </div>
-    <input id="password" type="password" name="password" placeholder="Password" required>
+    </fieldset>
+    {# The placeholder was the field's only name, and a placeholder stops being a
+       name the moment there is a value in the box. #}
+    <label class="sr-only" for="password">Password</label>
+    <input id="password" type="password" name="password" placeholder="Password"
+           autocomplete="current-password" required
+           {% if error %}aria-describedby="login-error"{% endif %}>
   </div>
   <button id="signin" type="submit">Sign in</button>
 </form>

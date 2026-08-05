@@ -25,7 +25,14 @@
     --card:           #1c1a18;
     --ink:            #f2efe9;
     --ink-soft:       #b3aca1;
-    --ink-faint:      #7d7669;
+    /* Was #7d7669, which measured 3.9:1 on --card and 4.3:1 on --paper — under
+       the 4.5:1 floor on both. This is the placeholder colour for every text
+       input in the app and the colour of the dashboard's secondary lines, so it
+       is the one value in here that was failing on three screens at once rather
+       than on one. Lightened just far enough to clear the floor (4.6:1 on --card,
+       5.1:1 on --paper) and no further, so it still reads a clear step below
+       --ink-soft rather than competing with it. */
+    --ink-faint:      #8b8377;
     --line:           #2f2c28;
     /* Deliberately bright enough to outline a control against a card. This is
        the border of an unmarked toggle: it has to say "empty", not "disabled",
