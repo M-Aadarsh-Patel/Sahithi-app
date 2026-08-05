@@ -35,9 +35,11 @@
   /* The logo says "HR ACADEMY" itself, so the heading's text would have been a
      second copy of it. The <h1> stays as the page's heading and the alt text
      carries the name. */
-  /* Declared for parity with the other two screens' headings, though it changes
-     nothing today: this h1's content is the logo image, not text. It matters the
-     moment any words are added beside or below the mark. */
+  /* Declared for parity with the other two screens' headings, though it resolves
+     to the system stack here: this h1's content is the logo image, not text, so
+     the page does not load Archivo at all. If words are ever added beside or
+     below the mark, set `heading_font = true` before the _style.html include or
+     they will quietly come out in the fallback. */
   h1 { margin: 0; font-family: var(--font-heading); }
   /* Full column width, not 88% of it. The PNG is trimmed — its ink runs to both
      edges of the canvas — so a 100% box puts the mark's own left and right edges

@@ -1,20 +1,37 @@
-{# Shared design tokens and base type. Included by entries.html and login.html.
+{# Shared design tokens and base type. Included by login, dashboard and entries.
    Inlined rather than served as a static file because mounting StaticFiles would
-   mean editing main.py. #}
+   mean editing main.py.
+
+   The two webfonts are opt-in, because neither is used by every page. Set the
+   flag before including this file:
+
+     {% set heading_font = true %}   Archivo — dashboard.html, entries.html
+     {% set icons        = true %}   Tabler  — dashboard.html only
+
+   Opt in rather than opt out on purpose. A page that forgets `icons` renders
+   empty boxes, which gets noticed within seconds; a page that forgets to opt
+   *out* pays for the font silently and forever. The second is what happened
+   here — login.html renders no icons and no Archivo glyphs (its only heading is
+   the logo image), and was still fetching 211KB of Tabler stylesheet and opening
+   two third-party connections on the app's first screen, usually on mobile
+   data. #}
+{% if heading_font %}
 {# Archivo at 500 and 700 only — the two weights the headings and tile titles
    use, so none of the rest of the family is pulled. display=swap paints text in
    the fallback immediately and swaps when Archivo lands, rather than holding it
    invisible on a slow connection. The preconnects open the sockets early, since
-   the stylesheet and the font file come from different hosts.
-
-   Tabler pinned to an exact version, not @latest: a CDN that silently moves
-   under the app is the same failure mode as an unpinned requirements.txt. #}
+   the stylesheet and the font file come from different hosts. #}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&display=swap">
+{% endif %}
+{% if icons %}
+{# Tabler pinned to an exact version, not @latest: a CDN that silently moves
+   under the app is the same failure mode as an unpinned requirements.txt. #}
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css">
+{% endif %}
 <style>
   :root {
     /* Dark, after the academy logo: a near-black field with off-white on it.
