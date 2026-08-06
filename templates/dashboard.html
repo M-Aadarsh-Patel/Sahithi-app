@@ -28,22 +28,9 @@
 
   /* 120px wide; the height follows the file's own 1036x381 and lands at ~44px,
      the same as the logout link's tap target, so the two sit level in row 1. */
-  /* The mark's red is a pure saturated scarlet, and the rest of the app is warm
-     near-black and off-white with two muted semantic hues. On the login screen
-     that red is the brand moment and earns every bit of its loudness; at 120px
-     in a header it is simply the highest-chroma thing on a quiet page, competing
-     with the one green accent that actually means something. Muted rather than
-     removed: this is still the mark, just not shouting in a header.
-
-     saturate(), not grayscale(). The wordmark is the only red part of a two-tone
-     PNG — "HR" is already white — so desaturating drops that red to a luminance
-     of about 21% and ACADEMY all but disappears against the page. Pulling the
-     chroma down instead lands it on an oxblood that sits with the warm neutrals
-     and stays legible, and it does not depend on the exact red in the file. */
-  .logo {
-    grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto;
-    filter: saturate(.35) brightness(1.05);
-  }
+  /* No filter on the mark. Muting it here was tried and reverted: the red is the
+     brand and it stays the brand on every screen it appears on. */
+  .logo { grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto; }
 
   .logout {
     grid-row: 1; grid-column: 2; justify-self: end;
