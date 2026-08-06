@@ -7,26 +7,6 @@
 {% set icons = true %}
 {% include "_style.html" %}
 <style>
-  /* ---- Type ------------------------------------------------------------
-     Six roles, and the rule for which face is which: Archivo names things,
-     the system stack describes them and acts.
-
-       page title   1.75rem  700 Archivo  -.025em   the h1
-       item title   1.125rem 500 Archivo  -.01em    a tile's name
-       body         1rem     400 system    0        the greeting
-       action       .875rem  550 system    0        log out
-       support      .8125rem 450 system    .01em    tile subtitle, meta line
-       chip         .66rem   700 system    .1em     status badge
-
-     It was 34 / 17 / 16 / 16 / 14.4 / 13 / 13 / 9.9px before, which is not a
-     scale: a 2.0 jump, then three steps of 1.06, 1.00 and 1.11 that are too
-     close to give their roles different jobs, then a 1.31. The sizes above step
-     at roughly 1.12–1.25 and every role is one clear move from its neighbour.
-
-     The 450s and the positive tracking on the small text are the light-on-dark
-     correction. Off-white on near-black looks thinner than the same weight the
-     other way round, and 13px at 400 with no tracking was the thinnest thing on
-     the page — half a weight step and a hair of tracking put it back. */
   body { max-width: 30rem; margin: 0 auto; }
 
   /* Two columns, four rows. Row 1 is the logo with the logout link opposite it;
@@ -48,9 +28,22 @@
 
   /* 120px wide; the height follows the file's own 1036x381 and lands at ~44px,
      the same as the logout link's tap target, so the two sit level in row 1. */
-  /* No filter on the mark. Muting it here was tried and reverted: the red is the
-     brand and it stays the brand on every screen it appears on. */
-  .logo { grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto; }
+  /* The mark's red is a pure saturated scarlet, and the rest of the app is warm
+     near-black and off-white with two muted semantic hues. On the login screen
+     that red is the brand moment and earns every bit of its loudness; at 120px
+     in a header it is simply the highest-chroma thing on a quiet page, competing
+     with the one green accent that actually means something. Muted rather than
+     removed: this is still the mark, just not shouting in a header.
+
+     saturate(), not grayscale(). The wordmark is the only red part of a two-tone
+     PNG — "HR" is already white — so desaturating drops that red to a luminance
+     of about 21% and ACADEMY all but disappears against the page. Pulling the
+     chroma down instead lands it on an oxblood that sits with the warm neutrals
+     and stays legible, and it does not depend on the exact red in the file. */
+  .logo {
+    grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto;
+    filter: saturate(.35) brightness(1.05);
+  }
 
   .logout {
     grid-row: 1; grid-column: 2; justify-self: end;
@@ -58,7 +51,7 @@
     padding: 0 .7rem; margin-right: -.7rem;   /* tap area without visual bulk */
     border-radius: var(--radius-sm);
     color: var(--ink-soft); text-decoration: none;
-    font-size: .875rem; font-weight: 550;
+    font-size: .9rem; font-weight: 550;
     transition: color .14s ease, background-color .14s ease;
   }
   .logout:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
@@ -66,27 +59,19 @@
   /* The top margin is the breathing room under the logo — put here rather than
      on the logo, so it does not grow row 1 and drag the logout link off the
      logo's centre line. line-height 1.1 because the body's 1.5 would leave a
-     28px word sitting in a 42px box with the space all in the wrong places.
-
-     28px, down from 34. "Dashboard" was the loudest text on a screen whose whole
-     job is the three tiles under it, and it is the one word here that tells you
-     nothing you did not already know. Still unmistakably the page title, but it
-     no longer outweighs the things you came to tap.
-
-     Tracking eases with it: -.025em rather than -.03em, because negative
-     tracking should come off as type gets smaller, not stay put. */
+     34px word sitting in a 51px box with the space all in the wrong places. */
   h1 {
     grid-row: 2; grid-column: 1 / -1;
     margin: .9rem 0 0;
     font-family: var(--font-heading);
-    font-size: 1.75rem; font-weight: 700; letter-spacing: -.025em;
+    font-size: 2.125rem; font-weight: 700; letter-spacing: -.03em;
     line-height: 1.1;
   }
 
   .who {
     grid-row: 3; grid-column: 1 / -1;
     margin: .3rem 0 0;
-    font-size: 1rem; color: var(--ink-soft);
+    font-size: 1.0625rem; color: var(--ink-soft);
   }
 
   /* Icon and text on one baseline. The middot is a literal character between two
@@ -96,8 +81,7 @@
     grid-row: 4; grid-column: 1 / -1;
     margin: .5rem 0 0;
     display: flex; align-items: center; gap: .4rem;
-    font-size: .8125rem; font-weight: 450; letter-spacing: .01em;
-    color: var(--ink-faint);
+    font-size: .8125rem; color: var(--ink-faint);
     font-variant-numeric: tabular-nums;
   }
   .meta .ti { font-size: 1rem; }
@@ -118,22 +102,14 @@
   }
   .tile .ti { font-size: 1.5rem; }
   .tile-text { min-width: 0; }
-  /* One step up, from 16px to 18px. These are the page's content and its only
-     tap targets, and at body size they were the same weight on the eye as the
-     greeting above them. */
   .tile-title {
     display: block;
     font-family: var(--font-heading);
-    font-size: 1.125rem; font-weight: 500; letter-spacing: -.01em;
-    line-height: 1.25;
+    font-size: 1rem; font-weight: 500; letter-spacing: -.01em; line-height: 1.2;
   }
-  /* Same role as the header's meta line — supporting text — so it takes exactly
-     the same size, weight, tracking and colour. A role that looks different in
-     two places on one screen is two roles. */
   .tile-sub {
-    display: block; margin-top: .12rem;
-    font-size: .8125rem; font-weight: 450; letter-spacing: .01em;
-    line-height: 1.3; color: var(--ink-faint);
+    display: block; margin-top: .1rem;
+    font-size: .8125rem; line-height: 1.2; color: var(--ink-faint);
   }
 
   /* Live: raised off the page, full-strength text, green icon, and it moves when
@@ -172,11 +148,8 @@
      screen already uses for its "today" badge. It replaces a full line of
      letterspaced capitals reading COMING SOON, which was the loudest text on the
      page and was announcing the one thing the page cannot do. */
-  /* .66rem, not the .62 this shipped with. The entries screen's "today" badge is
-     the same role — a small status chip — at .66rem/700/.1em, and the same role
-     wearing two sizes on two screens is the definition of drift. */
   .soon-chip {
-    font-size: .66rem; font-weight: 700;
+    font-size: .62rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: .1em;
     color: var(--ink-faint);
     background: rgba(255, 255, 255, .06);
