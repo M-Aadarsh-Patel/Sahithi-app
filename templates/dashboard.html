@@ -99,7 +99,11 @@
     display: flex; align-items: center; justify-content: center;
     width: 2.5rem; height: 2.5rem;
     font-size: 1.3rem;
-    border-radius: 10px;
+    /* --radius-sm, not the 10px this shipped with. It was the last one-off radius
+       in the app: a 40px chip nested inside a 12px tile wants the smaller of the
+       two tokens, and a literal that happens to fall between them is drift
+       whatever it looks like. */
+    border-radius: var(--radius-sm);
   }
   .tile .ti { font-size: 1.5rem; }
   .tile-text { min-width: 0; }
@@ -126,6 +130,23 @@
     border-left: 4px solid var(--green);
     box-shadow: var(--edge), var(--lift);
     transition: transform .1s ease, border-color .14s ease;
+  }
+  /* The page had no hover at all — four :active states and nothing for a pointer,
+     so on a desktop browser the one tappable tile and the log-out link gave no
+     sign they were live until you pressed them. Up on hover, down on press, the
+     same pairing the login screen's button uses.
+
+     border-left-color is restated because the shorthand above it sets all four
+     sides, and without it hovering the live tile would wipe the green signature
+     edge §3.2 exists for. Scoped to (hover: hover) so a phone never gets a
+     hover state stuck on after a tap. */
+  @media (hover: hover) {
+    a.tile:hover {
+      border-color: var(--line-strong);
+      border-left-color: var(--green);
+      transform: translateY(-1px);
+    }
+    .logout:hover { color: var(--ink); }
   }
   a.tile:active { transform: scale(.985); }
   a.tile .ti-checkbox {
