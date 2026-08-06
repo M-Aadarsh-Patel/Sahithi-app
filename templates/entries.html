@@ -168,9 +168,16 @@
     padding: .7rem .8rem;
     background: var(--card);
     border: 1px solid var(--line);
+    /* One edge carries the state. The row surface itself stays --card in every
+       state: tinting all 23 of them meant the register was mostly coloured
+       panels, and green and rose at that size stop being a signal and become
+       the page. Grey here is a real value, not an absence — an unmarked student
+       is a thing to come back to, so the bar is present and neutral rather than
+       missing. */
+    border-left: 4px solid var(--line-strong);
     border-radius: var(--radius);
     box-shadow: var(--edge), var(--lift);
-    transition: background-color .16s ease, border-color .16s ease;
+    transition: border-left-color .16s ease;
   }
   /* .row sets display:grid, which would otherwise beat the browser's own
      [hidden] { display: none } and leave hidden rows on screen. */
@@ -230,13 +237,12 @@
      This lands before the optimistic repaint does. */
   .present:active, .absent:active { transform: scale(.97); }
 
-  /* The whole row carries the state, not a 4px bar down its left edge. Scrolling
-     23 students, what you want to know is which ones are done, and a tinted
-     surface answers that from the corner of your eye where a stripe had to be
-     looked for. It also drops the one shape — the thick coloured side border —
-     that reads as generic template rather than as this app. */
-  .row.is-present { background: var(--green-tint);      border-color: rgba(55, 133, 78, .42); }
-  .row.is-absent  { background: var(--terracotta-tint); border-color: rgba(189, 74, 102, .42); }
+  /* The left edge, and only the left edge. The toggle below it is already a
+     filled green or rose block, so the row does not need a third telling of the
+     same fact — and the count at the top of the page now answers "how far along
+     am I" better than any amount of surface colour did. */
+  .row.is-present { border-left-color: var(--green); }
+  .row.is-absent  { border-left-color: var(--terracotta); }
 
   /* ---- Topics and remark ----------------------------------------------- */
   /* Sunk below the card rather than raised on it, so an empty topic box reads
@@ -359,6 +365,10 @@
      down a fast scroll. */
   .row.failed {
     border-color: var(--amber);
+    /* Restated, though border-color above already covers all four sides: this is
+       the one state that overrides the status bar, and it should not depend on
+       this rule happening to sit below .is-present in the file. */
+    border-left-color: var(--amber);
     background: var(--amber-tint);
     box-shadow: var(--edge),
                 0 0 0 1px rgba(217, 164, 65, .28),
