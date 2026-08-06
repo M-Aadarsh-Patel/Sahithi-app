@@ -94,7 +94,7 @@
         transparent 68%);
     pointer-events: none;
     z-index: -1;
-    animation: lamp 1.1s cubic-bezier(.16, 1, .3, 1) both;
+    animation: lamp 1.1s var(--ease) both;
   }
 
   /* Overshoots to full and settles back to .62, which is what makes it read as a
@@ -128,10 +128,10 @@
      below it — the buttons' :active transforms would silently stop working for
      the rest of the session. backwards covers the delay and then hands the
      element back to its own styles. */
-  .logo     { animation: mark-in .7s cubic-bezier(.16, 1, .3, 1) backwards; }
-  .profiles { animation: lift-in .5s cubic-bezier(.16, 1, .3, 1) .30s backwards; }
-  #password { animation: lift-in .5s cubic-bezier(.16, 1, .3, 1) .37s backwards; }
-  #signin   { animation: lift-in .5s cubic-bezier(.16, 1, .3, 1) .44s backwards; }
+  .logo     { animation: mark-in .7s var(--ease) backwards; }
+  .profiles { animation: lift-in .5s var(--ease) .30s backwards; }
+  #password { animation: lift-in .5s var(--ease) .37s backwards; }
+  #signin   { animation: lift-in .5s var(--ease) .44s backwards; }
 
   /* ---- Retry ------------------------------------------------------------ */
 
@@ -216,7 +216,14 @@
      coloured light is what makes that read as lit rather than merely recoloured. */
   .profiles label:has(input:checked) {
     background: var(--green); border-color: var(--green); color: #fff;
-    box-shadow: var(--glow-green);
+    /* --lift stays under the glow. On its own, --glow-green replaced the tile's
+       elevation instead of adding to it, so the card you had just chosen sat
+       flatter on the page than the one you had not — the opposite of what
+       picking it should do. Level 2 is a lit surface on top of Level 1, not
+       instead of it. --edge is dropped rather than stacked: --glow-green carries
+       its own brighter inner highlight at the same 1px, and two of them just
+       add up. */
+    box-shadow: var(--lift), var(--glow-green);
   }
   .profiles label:has(input:focus-visible) {
     outline: 2px solid var(--focus); outline-offset: 2px;
@@ -224,15 +231,20 @@
 
   /* Lifted onto the page, not sunk into it. On the entries screen a topic box is
      recessed below its card; here there is no card, and recessing a field into a
-     background this dark leaves a hole rather than a control. */
+     background this dark leaves a hole rather than a control.
+
+     --lift as well as --edge, which is what the paragraph above always claimed:
+     with only the lit top edge, this was the one control in the column with no
+     shadow under it, sitting visibly flatter than the tiles above and the button
+     below while describing itself as lifted. */
   #password {
     width: 100%; min-height: 3rem;
     padding: 0 .85rem;
     background: var(--card); color: var(--ink);
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-    box-shadow: var(--edge);
+    box-shadow: var(--edge), var(--lift);
     text-align: center;
-    transition: border-color .14s ease, box-shadow .14s ease;
+    transition: border-color var(--dur) ease, box-shadow var(--dur) ease;
   }
   #password::placeholder { color: var(--ink-faint); }
   #password:focus {
@@ -296,7 +308,7 @@
     background: var(--amber-tint); color: var(--amber);
     border: 1px solid rgba(217, 164, 65, .35);
     border-radius: var(--radius-sm); font-size: .92rem;
-    animation: flag-in .3s cubic-bezier(.16, 1, .3, 1) backwards;
+    animation: flag-in .3s var(--ease) backwards;
   }
   /* Down from under the logo, which is where it comes from in the layout — the
      form below is pushed down by exactly this much when it appears. */
