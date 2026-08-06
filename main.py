@@ -282,6 +282,18 @@ def save_entry(
     # it is written only when it arrived as one of the two literals.
     if status is not None:
         changes["status"] = status
+    # Absent clears the rest of the row. Those five fields are only on screen for
+    # a present student, so a topic or a score left behind on an absent row would
+    # be data the app holds and can no longer show or reach.
+    #
+    # After the two loops above, so a request carrying both an absent status and
+    # a field value resolves to the clear. "" and None split the same way they do
+    # up there: topics and the remark are free text that empties to "", the two
+    # marks are nullable and empty to None.
+    if status == "absent":
+        changes.update(
+            {"slot_1": "", "slot_2": "", "remark": "", "score": None, "max_marks": None}
+        )
 
     if not changes:
         # Nothing to write. Without this an empty POST would upsert a document
