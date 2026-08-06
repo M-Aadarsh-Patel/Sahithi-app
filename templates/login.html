@@ -46,7 +46,14 @@
      exactly on the edges of the controls below it. At 88% the mark sat inset by
      24px on each side, an offset that matched nothing else on the page and gave
      a two-element composition three different vertical edges. */
-  .logo { display: block; width: 100%; height: auto; }
+  /* A drop-shadow, not a box-shadow: the PNG is a cut-out, so box-shadow would
+     draw a rectangle behind a mark that has no rectangle. drop-shadow follows the
+     alpha, which puts the shadow under the letterforms themselves and lifts the
+     mark off the lit field rather than off a card. */
+  .logo {
+    display: block; width: 100%; height: auto;
+    filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .6));
+  }
 
   /* ---- Arrival ---------------------------------------------------------- */
 
@@ -63,16 +70,28 @@
     content: "";
     position: fixed;
     left: 50%; top: 38svh;
-    width: min(48rem, 150vw); aspect-ratio: 1;
+    /* height: auto, not inherited: the shared page glow in _style.html sets an
+       explicit height on this same pseudo-element, and an explicit height
+       silently wins over aspect-ratio — without this the lamp flattens into a
+       wide ellipse instead of the round pool the gradient was drawn for. */
+    width: min(48rem, 150vw); height: auto; aspect-ratio: 1;
     transform: translate(-50%, -50%);
-    /* Two stops, both barely there: an off-white core the colour of --ink and an
-       amber falloff, the same amber the app uses for warmth elsewhere. At peak
-       this lifts the field behind the logo by roughly one step of grey — enough
-       to read as a lamp, not enough to cost the cut-out its contrast. */
-    background: radial-gradient(closest-side,
-                  rgba(242, 239, 233, .07),
-                  rgba(217, 164, 65, .045) 45%,
-                  transparent 72%);
+    /* Two pools, layered. On top: the off-white core with an amber falloff, the
+       same amber the app uses for warmth elsewhere. Beneath it, wider and
+       fainter still, the logo's own scarlet — the one place outside the mark
+       itself the brand red appears. It sits centred on the wordmark's red line,
+       so the mark reads as the thing casting the light, and at .045 alpha it
+       warms the field without ever reading as a red shape. At peak the pair
+       lifts the field behind the logo by roughly one step of grey — enough to
+       read as a lamp, not enough to cost the cut-out its contrast. */
+    background:
+      radial-gradient(closest-side,
+        rgba(242, 239, 233, .07),
+        rgba(217, 164, 65, .045) 45%,
+        transparent 72%),
+      radial-gradient(closest-side,
+        rgba(237, 28, 36, .045),
+        transparent 68%);
     pointer-events: none;
     z-index: -1;
     animation: lamp 1.1s cubic-bezier(.16, 1, .3, 1) both;
@@ -90,9 +109,14 @@
   /* Blur, not just a fade. A logo that fades in is a logo appearing; a logo that
      sharpens is one the light has reached. It is one bounded filter on one
      image, run once. */
+  /* The drop-shadow is restated in both keyframes. filter is one property, so a
+     keyframe naming only blur() would drop the shadow for the length of the
+     animation and snap it back at the end. */
   @keyframes mark-in {
-    from { opacity: 0; transform: translateY(14px) scale(.985); filter: blur(9px); }
-    to   { opacity: 1; transform: none; filter: blur(0); }
+    from { opacity: 0; transform: translateY(14px) scale(.985);
+           filter: blur(9px) drop-shadow(0 8px 22px rgba(0, 0, 0, .6)); }
+    to   { opacity: 1; transform: none;
+           filter: blur(0) drop-shadow(0 8px 22px rgba(0, 0, 0, .6)); }
   }
   @keyframes lift-in {
     from { opacity: 0; transform: translateY(10px); }
@@ -159,11 +183,15 @@
     display: flex; align-items: center; justify-content: center;
     min-height: 3.5rem;
     background: var(--card); color: var(--ink-soft);
-    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
-    font-weight: 550; cursor: pointer;
+    /* --radius, not --radius-sm: these two are cards you pick between, not the
+       field-sized controls below them, and 12px is what the rest of the system
+       uses for a card. */
+    border: 1px solid var(--line-strong); border-radius: var(--radius);
+    font-weight: 600; cursor: pointer;
     box-shadow: var(--edge), var(--lift);
-    transition: background-color .14s ease, border-color .14s ease,
-                color .14s ease, transform .1s ease;
+    transition: background-color var(--dur) ease, border-color var(--dur) ease,
+                color var(--dur) ease, box-shadow var(--dur) ease,
+                transform .1s ease;
   }
   /* :not(:has(input:checked)) rather than ordering this before the checked rule —
      the two selectors compute to the same specificity, so without it whichever
@@ -182,11 +210,13 @@
      stays exactly where it would have sat inside the label, so focus lands in
      the right place on the page. */
   .profiles input { position: absolute; opacity: 0; }
-  /* A whole tile going solid green is already the loudest state change on the
-     page. Adding a green glow under it was decoration on top of a signal that
-     had already landed, so the elevation stays exactly what it is unselected. */
+  /* Level 2: the fill, the ring in the same hue, and a soft glow of it spilling
+     onto the page, plus the hairline inner highlight that --glow-green carries.
+     This is the one control on the screen that commits to a choice, and low-alpha
+     coloured light is what makes that read as lit rather than merely recoloured. */
   .profiles label:has(input:checked) {
     background: var(--green); border-color: var(--green); color: #fff;
+    box-shadow: var(--glow-green);
   }
   .profiles label:has(input:focus-visible) {
     outline: 2px solid var(--focus); outline-offset: 2px;
@@ -226,10 +256,12 @@
   #signin {
     position: relative; overflow: hidden;
     width: 100%; min-height: 3rem;
-    background: var(--ink); color: var(--paper);
+    /* A hairline of pure white at the top easing into --ink, plus the lit top
+       edge — what separates a key from a slab of paint. */
+    background: linear-gradient(180deg, #ffffff, var(--ink)); color: var(--paper);
     border: 1px solid var(--ink); border-radius: var(--radius-sm);
     font-size: 1rem; font-weight: 600; letter-spacing: -.005em; cursor: pointer;
-    box-shadow: var(--lift);
+    box-shadow: var(--lift), inset 0 1px 0 rgba(255, 255, 255, .55);
     transition: transform .1s ease, opacity .14s ease;
   }
   #signin:active { transform: scale(.985); opacity: .9; }

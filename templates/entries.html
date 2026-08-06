@@ -6,27 +6,82 @@
 {% set heading_font = true %}
 {% include "_style.html" %}
 <style>
+  /* Same centred column the dashboard uses, a touch wider for the register. */
+  body { max-width: 34rem; margin: 0 auto; }
+
+  /* ---- The pinned header ----------------------------------------------- */
+  /* The date line and the progress strip ride together in one frosted panel
+     that pins to the top of the viewport. The register is ~40 rows long; the
+     two facts that must never scroll away are "which day am I writing to?" and
+     "how far along am I?" — so they don't. Solid paper by default; where the
+     engine can blur, the panel goes translucent and the rows slide under it
+     through glass. */
+  .stick {
+    position: sticky; top: 0; z-index: 3;
+    padding: .4rem 0 .55rem;
+    margin: 0 0 .6rem;
+    background: var(--paper);
+    /* A hairline of light to close the panel, and a soft drop so the register
+       reads as passing *under* it rather than being cut by it. */
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .045),
+                0 14px 28px -16px rgba(0, 0, 0, .6);
+  }
+  @supports ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .stick {
+      /* .86, not .74. Frosted has to stay opaque enough to read *as* glass: at
+         .74 a student row passing beneath stayed legible through the strip
+         below the date bar — you could read "present / absent" behind the
+         count, which reads as a rendering fault rather than as depth. The blur
+         still does the work; this only stops the backdrop competing with the
+         text in front of it. */
+      background: rgba(16, 15, 14, .86);
+      -webkit-backdrop-filter: blur(14px) saturate(1.3);
+      backdrop-filter: blur(14px) saturate(1.3);
+    }
+  }
+
   /* ---- Date bar -------------------------------------------------------- */
   /* Full width, and its colour is the answer to "which day am I writing to?" —
      the one question that must never need a second look. Amber for a past date,
      green for today. Read from the markup with :has() so the template needs no
-     extra class. */
+     extra class. One line now: the picker used to wrap onto a second line
+     inside this bar, but a wrapped bar is a variable-height bar, and a pinned
+     panel has to be exactly as tall as it looks. The picker is simply the next
+     field below. */
   .datebar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: .45rem .55rem;
     padding: .75rem .9rem;
-    margin: 0 0 .7rem;
+    margin: 0 0 .5rem;
     border: 1px solid rgba(217, 164, 65, .32);
     border-radius: var(--radius);
     background: var(--amber-tint);
-    box-shadow: var(--edge), var(--lift);
+    /* The lift, plus a faint spill of the state hue below the bar. Pinned, this
+       is the edge the register passes under, and a coloured falloff is what
+       makes the bar read as a lit pane held over the list rather than a band cut
+       out of it. The negative spread keeps it a glow beneath the bar instead of
+       a halo all around it. */
+    box-shadow: var(--edge), var(--lift),
+                0 10px 24px -14px rgba(217, 164, 65, .45);
   }
   /* The tint is the whole signal, as it is on a student row. The 4px amber bar
      that used to run down this edge said the same thing a second time, louder. */
   .datebar:has(.today) {
     background: var(--green-tint); border-color: rgba(55, 133, 78, .38);
+    box-shadow: var(--edge), var(--lift),
+                0 10px 24px -14px rgba(55, 133, 78, .45);
+  }
+  /* Solid above is the fallback. Where the engine can blur, the bar's own fill
+     goes translucent as well, so the tint stops being a painted panel and
+     becomes a colour the blurred register is read through — which is the whole
+     point of frosting it. Placed after the two rules above rather than in the
+     .stick @supports block at the top of the file, because that block comes
+     earlier and these selectors would lose to it on source order. */
+  @supports ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .datebar             { background: rgba(42, 33, 19, .55); }
+    .datebar:has(.today) { background: rgba(22, 38, 26, .55); }
   }
 
   /* This is the page's heading — it carries the one fact the screen is about —
@@ -60,7 +115,7 @@
     padding: 0 .5rem; margin: -.35rem 0;      /* tap area without visual bulk */
     border-radius: var(--radius-sm);
     color: var(--ink-soft); text-decoration: none;
-    font-size: .88rem; font-weight: 550;
+    font-size: .88rem; font-weight: 600;
     transition: color .13s ease, background-color .13s ease;
   }
   .datebar a:active, .back:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
@@ -71,24 +126,20 @@
      padding does not read as an indent. */
   header { display: flex; margin: 0 0 .8rem; }
   .back { padding: 0 .7rem; margin: 0 0 0 -.7rem; }
-  /* Its own full-width line. Prev, date, badge, next and a date field will not
-     share 360px without overflowing.
+  /* Its own full-width field between the pinned panel and the search box.
 
-     The sizing here is deliberately belt-and-braces, because a percentage
-     flex-basis on a native date control is not reliable: some engines resolve it
-     against the content box and then add this field's own padding and borders
-     outside it, which pushed the right edge ~21px past the bar. box-sizing is
-     restated so no UA rule can win it, and max-width is a hard clamp on the
-     border box — it holds whether the cause is that, or a native control
-     insisting on its intrinsic width. */
+     box-sizing is restated so no UA rule can win it, and max-width is a hard
+     clamp on the border box — a native date control insisting on its intrinsic
+     width is what once pushed the right edge ~21px past its container. */
   #picker {
-    flex: 1 1 100%;
+    display: block;
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
     min-width: 0;
     min-height: var(--tap);
     padding: 0 .6rem;
+    margin: 0 0 .6rem;
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     background: rgba(0, 0, 0, .25); color: var(--ink);
     font-variant-numeric: tabular-nums;
@@ -96,18 +147,14 @@
 
   /* ---- Progress -------------------------------------------------------- */
   /* Taking the register is a task with an end, and the page never said how far
-     along it was. Sticky, because the answer is worth having at student 18 as
-     much as at student 1, and the list is long enough that a header at the top
+     along it was. It rides inside the pinned panel above, so the answer is
+     still there at student 18 — the list is long enough that a line at the top
      of the document would have scrolled away before it was useful.
 
      Counted in the browser from the rows already on the page — no new route, no
      new query, and it updates on the tap rather than on the next page load. */
   .progress {
-    position: sticky; top: 0; z-index: 2;
     display: flex; align-items: center; gap: .6rem;
-    padding: .5rem 0 .55rem;
-    margin: 0 0 .7rem;
-    background: var(--paper);
   }
   .progress-count {
     flex: 0 0 auto;
@@ -138,13 +185,24 @@
   .progress.is-done .progress-count { color: var(--ink); }
 
   /* ---- Search ---------------------------------------------------------- */
+  /* The magnifier is an inline SVG, not a Tabler glyph — this page deliberately
+     loads no icon font (see _style.html's opt-in flags), and 211KB of webfont
+     for one 20px mark is the wrong trade. The data URI is the same stroke and
+     colour the font would have drawn. */
   #search {
     width: 100%; min-height: var(--tap);
-    padding: 0 .85rem; margin: 0 0 .9rem;
-    background: var(--card); color: var(--ink);
+    padding: 0 .85rem 0 2.35rem; margin: 0 0 .9rem;
+    background-color: var(--card); color: var(--ink);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238b8377' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m16.5 16.5 5 5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: .8rem center;
+    background-size: 1.05rem;
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     box-shadow: var(--edge);
   }
+  /* Desktop Safari draws its own magnifier in a search field; two is not
+     better than one. */
+  #search::-webkit-search-decoration { display: none; }
   #search::placeholder { color: var(--ink-faint); }
 
   /* ---- Rows ------------------------------------------------------------ */
@@ -183,7 +241,36 @@
      [hidden] { display: none } and leave hidden rows on screen. */
   .row[hidden] { display: none; }
 
-  .name    { grid-area: 1 / 1 / 2 / 9; font-size: 1.02rem; font-weight: 560;
+  /* The first screenful arrives in sequence, 40ms apart; everything below it
+     is simply there. The .enter class comes off the list 800ms after load (see
+     the script at the bottom), so a row htmx swaps in after a save never
+     replays this. */
+  @keyframes row-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  #rows.enter .row:nth-child(-n+10) { animation: row-in .34s var(--ease) backwards; }
+  #rows.enter .row:nth-child(2)  { animation-delay: .04s; }
+  #rows.enter .row:nth-child(3)  { animation-delay: .08s; }
+  #rows.enter .row:nth-child(4)  { animation-delay: .12s; }
+  #rows.enter .row:nth-child(5)  { animation-delay: .16s; }
+  #rows.enter .row:nth-child(6)  { animation-delay: .20s; }
+  #rows.enter .row:nth-child(7)  { animation-delay: .24s; }
+  #rows.enter .row:nth-child(8)  { animation-delay: .28s; }
+  #rows.enter .row:nth-child(9)  { animation-delay: .32s; }
+  #rows.enter .row:nth-child(10) { animation-delay: .36s; }
+
+  /* Delays, not durations, are the problem under reduce-motion: the shared
+     rule crushes the duration but a backwards-filled row would still sit
+     invisible until its stagger elapsed. Off by name. */
+  @media (prefers-reduced-motion: reduce) {
+    #rows.enter .row { animation: none; }
+  }
+
+  /* The one line anybody reads on every row, so it gets the real semibold —
+     600 now resolves to a served weight instead of rounding down to medium or
+     up to bold. */
+  .name    { grid-area: 1 / 1 / 2 / 9; font-size: 1.02rem; font-weight: 600;
              letter-spacing: -.012em; line-height: 1.25;
              overflow-wrap: anywhere; }
   /* Set on its own dark plate so a column of roll numbers reads as an index
@@ -212,7 +299,7 @@
     min-height: var(--tap);
     border: 1px solid var(--line-strong);
     background: rgba(0, 0, 0, .25); color: var(--ink-soft);
-    font-size: .9rem; font-weight: 550; letter-spacing: .005em; cursor: pointer;
+    font-size: .9rem; font-weight: 600; letter-spacing: .005em; cursor: pointer;
     transition: background-color .14s ease, border-color .14s ease,
                 color .14s ease, transform .1s ease;
   }
@@ -226,12 +313,27 @@
   }
   .absent { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
-  /* Three states. Unmarked is the quiet default, i.e. no entry document. */
+  /* Three states. Unmarked is the quiet default, i.e. no entry document. A
+     committed half fills, catches the lit top edge and lets a whisper of its
+     hue spill onto the card — the difference between a recoloured button and
+     a lamp coming on. */
   .row.is-present .present {
     background: var(--green); border-color: var(--green); color: #fff;
+    box-shadow: var(--glow-green);
+    animation: settle .18s var(--ease);
   }
   .row.is-absent .absent {
     background: var(--terracotta); border-color: var(--terracotta); color: #fff;
+    box-shadow: var(--glow-rose);
+    animation: settle .18s var(--ease);
+  }
+  /* One short dip-and-return as the state lands: the physical half of the
+     optimistic repaint. It plays again when the server's row swaps in behind
+     it, which reads as confirmation, not repetition — 180ms at 4% scale. */
+  @keyframes settle {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(.96); }
+    100% { transform: scale(1); }
   }
   /* A phone has no hover, so a tap that changes nothing for 200ms feels broken.
      This lands before the optimistic repaint does. */
@@ -259,18 +361,20 @@
 
   /* Same sunken treatment as a topic box, but sized for two or three digits and
      centred so the pair reads as a fraction across the slash. */
-  /* A caption for the two fields under it, not a field in its own right — so it
-     is small, muted and set apart by case rather than by size or colour alone.
+  /* A prefix to the left of the fraction, not a caption above it — so the score
+     line reads as one sentence, "Test Score 7 / 10", instead of a heading with
+     two boxes under it. Small, muted, and set apart by case rather than by size
+     or colour alone.
 
-     line-height 1 and the negative bottom margin are what keep the extra line
-     cheap: the box is only as tall as the glyphs, and it claws back most of the
-     row-gap so the fields sit tight under their own label rather than floating
-     halfway between it and the topics above. */
+     Centred on the fields rather than sitting on their baseline, because it is
+     now beside a 44px control rather than above one, and no margins: the caption
+     needed them to claw back the row-gap, and there is no longer a row-gap
+     between it and the fields to claw back. */
   .marks-label {
-    align-self: end;
+    align-self: center;
     font-size: .64rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: .09em; color: var(--ink-faint);
-    line-height: 1; margin: .6rem 0 -.2rem;
+    line-height: 1;
   }
   /* Absent dims the fields via :disabled; the label has to follow or the line
      half-fades and looks like a rendering fault. */
@@ -292,16 +396,39 @@
   /* Absent: dimmed, and the disabled attribute already blocks focus, typing and
      submission. Not hidden — the fraction's place in the row stays put. */
   .mark:disabled { opacity: .4; }
-  /* Slot-width, less the room the slash needs. Set after .mark so it wins over
-     that rule's width: 100% — same specificity, so order decides. Trimming both
-     by the same amount keeps the pair symmetrical about the seam. */
-  [name="score"], [name="max_marks"] { width: calc(100% - .55rem); }
+  /* One field, two halves — the same construction as the present/absent pair.
+     The score and its maximum used to be two separate boxes with a slash
+     floating between them, which read as two unrelated inputs; joined at the
+     seam they are one fraction. The adjoining borders go transparent so the
+     slash sits on an unbroken field rather than being struck through by a
+     shared edge. Set after .mark so the radii win over its all-round corners —
+     same specificity, so order decides. */
+  [name="score"] {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    border-right-color: transparent;
+    /* width:auto is what makes the negative margin bite. .mark sets width:100%,
+       and a grid item with a definite width does not stretch — the margin then
+       pulls the margin box in without widening the border box, so the two halves
+       still sat 7.2px apart with the join written but not rendering. Back on
+       auto, the item stretches to its area minus its margins, and a negative one
+       makes that wider: the right border lands under the max-marks left border
+       and the pair becomes one field. Same construction as .present/.absent,
+       which never set a width for exactly this reason. */
+    width: auto;
+    margin-right: calc(-.45rem - 1px);
+  }
+  [name="max_marks"] {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    border-left-color: transparent;
+  }
   .mark::placeholder { color: var(--ink-faint); }
   .slash { color: var(--ink-faint); font-size: 1rem; }
 
   .topic:focus, .mark:focus, .remark:focus, #search:focus, #picker:focus {
     outline: none;
-    background: rgba(0, 0, 0, .38);
+    /* background-color, not the shorthand: the shorthand would also reset the
+       search field's magnifier to nothing for as long as it has focus. */
+    background-color: rgba(0, 0, 0, .38);
     border-color: var(--focus);
     box-shadow: var(--focus-ring);
   }
@@ -331,23 +458,35 @@
   }
   [name="slot_1"] { grid-area: 1 / 1 / 2 / 7; }
   [name="slot_2"] { grid-area: 1 / 7 / 2 / 13; }
-  /* Line 2 is the label alone, line 3 the fraction. The two fields take the same
-     halves as slot 1 and slot 2 above, so all four boxes share the same left and
-     right edges down the block.
+  /* One line, not two: the label takes the first four tracks and the fraction
+     the remaining eight, split evenly so the two halves are the same width.
+     Merging the caption onto the fields' own line is what turns a heading with
+     two boxes under it into a single control with a name.
 
-     The slash is placed across the whole line rather than in a track of its own:
-     centred in a 12-column grid it lands exactly on the seam between the two
-     halves, which is where the gap is. A track would have had to come out of the
-     fields. */
-  .marks-label       { grid-area: 2 / 1 / 3 / 13; }
-  [name="score"]     { grid-area: 3 / 1 / 4 / 7; justify-self: start; }
-  .slash             { grid-area: 3 / 1 / 4 / 13; justify-self: center;
-                       pointer-events: none; }
-  [name="max_marks"] { grid-area: 3 / 7 / 4 / 13; justify-self: end; }
-  .remark            { grid-area: 4 / 1 / 5 / 13; }
+     The slash is anchored to the seam itself rather than centred across the
+     fraction. Those are not the same point: centred across lines 5 to 13 lands
+     half a column-gap — 3.6px — to the left of line 9, because the span carries
+     one more gap than the half either side of it. Small, but with the two halves
+     now actually meeting there is a seam to be off by it. Placed at line 9 and
+     pulled back half its own width, it sits on the join at any viewport. */
+  .marks-label       { grid-area: 2 / 1 / 3 / 5; }
+  [name="score"]     { grid-area: 2 / 5 / 3 / 9; }
+  .slash             { grid-area: 2 / 9 / 3 / 10; justify-self: start;
+                       transform: translateX(-50%); pointer-events: none; }
+  [name="max_marks"] { grid-area: 2 / 9 / 3 / 13; }
+  .remark            { grid-area: 3 / 1 / 4 / 13; }
 
   /* ---- Saved and failed ------------------------------------------------ */
-  .tick { color: var(--green); font-size: 1.05rem; line-height: 1; }
+  /* The pop is what separates "the tick appeared" from "the save landed".
+     hidden → shown is a display change, which restarts the animation every
+     time the tick is revealed — the swap and the afterRequest handler both get
+     it for free. */
+  @keyframes tick-in {
+    from { opacity: 0; transform: scale(.5); }
+    to   { opacity: 1; transform: none; }
+  }
+  .tick { color: var(--green); font-size: 1.05rem; line-height: 1;
+          animation: tick-in .16s var(--ease); }
   /* Amber, not the rose used for absent. A failed save and an absent student are
      different kinds of thing, and in rose they were near-identical at a glance:
      both a red-family border on the same row. Amber already means "look here"
@@ -380,22 +519,31 @@
 <header>
   <a class="back" href="/dashboard">‹ Dashboard</a>
 </header>
-<div class="datebar">
-  <a href="/entries/{{ prev_date }}">‹ prev</a>
-  <span class="current">{{ formatted }}</span>
-  {% if date == today %}<span class="today">today</span>{% endif %}
-  {# No "next" on today. §4.2 blocks the future, so the link would only 400. #}
-  {% if next_date <= today %}<a href="/entries/{{ next_date }}">next ›</a>{% endif %}
-  <input type="date" id="picker" value="{{ date }}" max="{{ today }}">
+{# The pinned panel: date line and progress stay on screen while the register
+   scrolls. The picker moved out of the bar — a wrapped second line made the
+   bar's height unpredictable, and a pinned panel has to be exactly as tall as
+   it looks. It is simply the next field down. #}
+<div class="stick">
+  <div class="datebar">
+    <a href="/entries/{{ prev_date }}">‹ prev</a>
+    <span class="current">{{ formatted }}</span>
+    {% if date == today %}<span class="today">today</span>{% endif %}
+    {# No "next" on today. §4.2 blocks the future, so the link would only 400. #}
+    {% if next_date <= today %}<a href="/entries/{{ next_date }}">next ›</a>{% endif %}
+  </div>
+  {# The count is the readable version; the bar is the same fact for the corner
+     of the eye, so it is hidden from assistive tech rather than described
+     twice. #}
+  <div class="progress" id="progress">
+    <span class="progress-count" id="progress-count"></span>
+    <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
 </div>
+<input type="date" id="picker" value="{{ date }}" max="{{ today }}">
 <input id="search" type="search" placeholder="Search name or roll number">
-{# The count is the readable version; the bar is the same fact for the corner of
-   the eye, so it is hidden from assistive tech rather than described twice. #}
-<div class="progress" id="progress">
-  <span class="progress-count" id="progress-count"></span>
-  <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
-</div>
-<ul>
+{# .enter gates the arrival stagger; the script below removes it 800ms after
+   load so rows swapped in by htmx after a save never replay the entrance. #}
+<ul id="rows" class="enter">
   {% for student in students %}
     {% with entry = entry_by_id.get(student._id) %}
       {% include "row.html" %}
@@ -483,6 +631,11 @@
   // the swap replacing the buttons it would otherwise have been bound to.
   document.body.addEventListener("click", updateProgress);
   document.body.addEventListener("htmx:afterSwap", updateProgress);
+
+  // The arrival stagger is a first-load thing. 800ms covers the last row's
+  // delay plus its run; after that a row htmx swaps in on a save must appear
+  // exactly as it was, not rise again.
+  setTimeout(() => document.getElementById("rows").classList.remove("enter"), 800);
 
   // The picker is a plain navigation control: pick a day, load that day.
   document.getElementById("picker").addEventListener("change", (event) => {

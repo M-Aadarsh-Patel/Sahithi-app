@@ -16,15 +16,18 @@
    two third-party connections on the app's first screen, usually on mobile
    data. #}
 {% if heading_font %}
-{# Archivo at 500 and 700 only — the two weights the headings and tile titles
-   use, so none of the rest of the family is pulled. display=swap paints text in
-   the fallback immediately and swaps when Archivo lands, rather than holding it
+{# Archivo at 500, 600 and 700 — medium for tile titles and control labels,
+   semibold for student names and the small caps captions, bold for headings.
+   600 joined when the name needed a real semibold: with only 500 and 700 on
+   the wire a font-weight of 600 rounds *up* to 700, so every "semibold" caption
+   in the app was quietly rendering bold. display=swap paints text in the
+   fallback immediately and swaps when Archivo lands, rather than holding it
    invisible on a slow connection. The preconnects open the sockets early, since
    the stylesheet and the font file come from different hosts. #}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&display=swap">
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&display=swap">
 {% endif %}
 {% if icons %}
 {# Tabler pinned to an exact version, not @latest: a CDN that silently moves
@@ -85,7 +88,32 @@
        separate planes. A one-pixel lit top edge is what actually separates
        them — it reads as a surface catching light, and costs no contrast. */
     --edge:           inset 0 1px 0 rgba(255, 255, 255, .05);
-    --lift:           0 1px 2px rgba(0, 0, 0, .45);
+    /* Two layers, not one: the tight contact shadow grounds the card, the wide
+       diffuse one is the light falling off around it. Either alone reads flat
+       or muddy; together they are what "raised" looks like on a dark field. */
+    --lift:           0 1px 2px rgba(0, 0, 0, .45),
+                      0 6px 20px rgba(0, 0, 0, .22);
+    /* The committed half of a toggle: fill plus a whisper of the same hue
+       spilling onto the card, plus the lit top edge a physical key would have.
+       Low alpha is the whole trick — this is a lamp, not a neon sign. */
+    --glow-green:     0 2px 10px rgba(55, 133, 78, .30),
+                      inset 0 1px 0 rgba(255, 255, 255, .12);
+    --glow-rose:      0 2px 10px rgba(189, 74, 102, .32),
+                      inset 0 1px 0 rgba(255, 255, 255, .12);
+    --glow-amber:     0 2px 10px rgba(217, 164, 65, .28),
+                      inset 0 1px 0 rgba(255, 255, 255, .12);
+    /* A colour, not a shadow — the other three are box-shadows a control wears,
+       this one is the logo's scarlet at the alpha of a pool of light, for the
+       radial behind the mark on the login screen. */
+    --glow-brand:     rgba(237, 28, 36, .10);
+
+    /* The motion trio. One easing curve every entrance and settle uses, so a new
+       animation cannot drift into a feel of its own, and the two durations the
+       whole app moves at: --dur for a state change answering a tap, --dur-enter
+       for something arriving on screen. */
+    --ease:           cubic-bezier(.22, .61, .36, 1);
+    --dur:            .16s;
+    --dur-enter:      .28s;
 
     --radius:         12px;
     --radius-sm:      9px;
@@ -129,6 +157,34 @@
        own :active state, so the default is noise. */
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* The page is lit from above. A wide, barely-there pool of warm light at the
+     top of the viewport is what keeps the near-black field from reading as a
+     void — surfaces below it catch --edge and --lift and sit in space instead
+     of on a flat matte. Fixed, so it does not scroll with the list; z-index -1
+     keeps it above the page background and behind every control (the same
+     mechanism the login page's lamp relies on — and login's own body::before
+     simply overrides this one with its staged version). */
+  body::before {
+    content: "";
+    position: fixed;
+    left: 50%; top: -6svh;
+    width: min(52rem, 160vw); height: 46svh;
+    transform: translateX(-50%);
+    background: radial-gradient(closest-side,
+                  rgba(255, 232, 200, .045),
+                  transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Every navigation in this app is a full page load, so without this the next
+     screen simply replaces this one in a single frame. 200ms of fade is enough
+     to read as a transition between two screens rather than a cut, and short
+     enough that nobody waits on it. Opacity only — nothing moves, so it costs no
+     layout and cannot fight the per-page entrances underneath it. */
+  @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
+  body { animation: page-in .2s ease-out; }
 
   input, button, summary { font: inherit; color: inherit; }
   /* Anything below 16px makes iOS Safari zoom the page on focus, which on this
