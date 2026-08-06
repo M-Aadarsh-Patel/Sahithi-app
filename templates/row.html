@@ -6,18 +6,6 @@
    screen, which a tap changes before the save lands — so a failed save has
    something true to revert to rather than the guess it just painted. #}
 
-{# Whether this student has anything beyond a present/absent mark. It decides
-   only whether the disclosure below starts open: a row that already holds a
-   topic, a score or a remark must never hide it behind a tap, because then the
-   only way to find out what is recorded is to open all 23.
-
-   .get() rather than attribute access, and `entry and` in front: a student with
-   no document at all makes `entry` None, and `entry.score is not none` would be
-   asking that question of Undefined, which answers True and would have opened
-   every empty row on the page. #}
-{% set has_extras = entry and (entry.get('slot_1') or entry.get('slot_2')
-                    or entry.get('remark') or entry.get('score') is not none
-                    or entry.get('max_marks') is not none) %}
 <li id="row-{{ student._id }}"
     class="row is-{{ entry.status or 'unmarked' }}"
     data-status="{{ entry.status or 'unmarked' }}"
@@ -42,26 +30,18 @@
      this same span rather than building a second kind of tick. #}
   <span class="tick" {% if not saved %}hidden{% endif %}>✓</span>
 
-  {# Everything below the mark lives behind this. Taking the register is 23 taps
-     on present or absent; the topics and the score are the occasional case, and
-     showing all six boxes for all 23 students meant 231px of row for the one
-     line anybody reads. Closed, this is a chip; open, it is exactly what it was.
+  {# Everything below the mark is shown by the status, not by a control of its
+     own. These five fields only mean anything for a student who was actually
+     there, so being marked present is the question the disclosure was asking —
+     there is no reason to ask it twice. Unmarked or absent, the row is the name
+     and the toggle and nothing else.
 
-     <details>, not a class toggled by script, for two reasons: the remark box
-     already used it, so the page keeps one disclosure idiom; and htmx replaces
-     this whole <li> on every present/absent tap, which would wipe any open state
-     JavaScript were holding. Rendering `open` from the saved document survives
-     the swap, because the server decides it again each time. #}
-  <details class="more"{% if has_extras %} open{% endif %}>
-    <summary>
-      <span class="sr-only">Topics, test score and remark</span>
-      <span class="more-label" aria-hidden="true">Details</span>
-      <svg class="chev" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-        <path d="M4 6.5 8 10.5 12 6.5" fill="none" stroke="currentColor"
-              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </summary>
-
+     No [open] attribute and no script: the CSS keys off .is-present, which
+     optimistic() puts on the row at the moment of the tap and which the server's
+     own re-render carries back on the swap. That means the fields appear on the
+     tap rather than after the round trip, and a save that fails takes them away
+     again for free, because markFailed already reverts the row to data-status. #}
+  <div class="more">
     <div class="more-body">
       {# Topics and remark save themselves on blur, each sending only its own
          field, so none of them can overwrite the toggle or each other.
@@ -104,15 +84,14 @@
              value="{{ '' if absent else (entry.max_marks if entry.max_marks is not none else '') }}"
              hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
 
-      {# Was a second <details> nested inside the row, opened by a ✎ glyph. It is
-         a plain field now: once the row's own disclosure is what hides the
-         occasional work, a disclosure inside a disclosure is one tap of
-         ceremony for one text box. #}
+      {# Was a second <details> nested inside the row, opened by a ✎ glyph, and
+         then a plain field inside the row's own disclosure. It is simply a field
+         now — there is nothing left to open. #}
       <input class="remark" name="remark" value="{{ entry.remark or '' }}"
              placeholder="Remark" aria-label="Remark" autocomplete="off"
              hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
     </div>
-  </details>
+  </div>
 
   <button class="retry" type="button">retry</button>
 </li>

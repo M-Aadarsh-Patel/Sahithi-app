@@ -94,12 +94,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .sr-only {
-    position: absolute; width: 1px; height: 1px;
-    margin: -1px; padding: 0; border: 0;
-    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-  }
-
   /* ---- Progress -------------------------------------------------------- */
   /* Taking the register is a task with an end, and the page never said how far
      along it was. Sticky, because the answer is worth having at student 18 as
@@ -198,11 +192,13 @@
   .tick    { grid-area: 1 / 9 / 2 / 10; justify-self: end; }
   .present { grid-area: 2 / 1 / 3 / 7; }
   .absent  { grid-area: 2 / 7 / 3 / 13; }
-  .more    { grid-area: 3 / 1 / 4 / 13; }
-  /* Only ever on screen when a save has failed, so it costs nothing until then —
-     display:none takes it out of the grid entirely. Full width because at that
-     point it is the only thing worth tapping. */
-  .retry   { grid-area: 4 / 1 / 5 / 13; }
+  /* Full width, and placed by flow rather than by line number. Both of these are
+     conditional — the fields only exist on a present row, the retry button only
+     on a failed one — and a fixed `grid-area: 3 / …` would hold an empty track
+     open when its element is display:none, putting a row-gap above whatever came
+     after it. Auto placement means a hidden one occupies nothing at all. */
+  .more    { grid-column: 1 / -1; }
+  .retry   { grid-column: 1 / -1; }
 
   /* ---- Toggle ---------------------------------------------------------- */
   .present, .absent {
@@ -304,38 +300,17 @@
     box-shadow: var(--focus-ring);
   }
 
-  /* ---- The row's disclosure -------------------------------------------- */
-  /* A chip, not a bar: closed, this is the only thing line 3 costs, so it stays
-     as small as a control can be and still be found. Left-aligned under the
-     name rather than centred, because it belongs to this student and the eye is
-     already down that edge reading names. */
-  .more > summary {
-    display: inline-flex; align-items: center; gap: .3rem;
-    width: fit-content;
-    position: relative;                     /* for the tap area below */
-    min-height: 1.85rem; padding: 0 .5rem 0 .55rem;
-    border: 1px solid var(--line); border-radius: 999px;
-    background: rgba(0, 0, 0, .22); color: var(--ink-faint);
-    font-size: .66rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .09em;
-    cursor: pointer;
-    list-style: none;                       /* drop the disclosure triangle */
-    transition: color .14s ease, background-color .14s ease,
-                border-color .14s ease, transform .1s ease;
-  }
-  .more > summary::-webkit-details-marker { display: none; }
-  /* The chip reads at 30px because that is all the room line 3 can spare, but a
-     thumb needs 44. This stretches the hit area over the row-gap either side
-     without the chip itself growing. */
-  .more > summary::after {
-    content: ""; position: absolute; inset: -7px -10px;
-  }
-  .more > summary:active { transform: scale(.97); }
-  .more[open] > summary {
-    color: var(--ink-soft); border-color: var(--line-strong);
-  }
-  .chev { transition: transform .18s ease; }
-  .more[open] > summary .chev { transform: rotate(180deg); }
+  /* ---- The fields the mark reveals ------------------------------------- */
+  /* Shown by the status, not by a control. .is-present is on the row from the
+     moment of the tap — optimistic() puts it there before the save leaves — so
+     the fields arrive with the tap rather than after the round trip, and a
+     failed save hides them again because markFailed reverts the class.
+
+     display, not a height transition: htmx replaces the whole <li> a few hundred
+     ms later with the server's own copy, which would interrupt an entrance
+     animation and start it over. */
+  .more { display: none; }
+  .row.is-present .more { display: block; }
 
   /* The five boxes, in the same proportions they had when they were part of the
      row itself — two topics on one line, then the label, then the fraction, then
