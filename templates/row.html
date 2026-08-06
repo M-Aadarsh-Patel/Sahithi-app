@@ -5,6 +5,19 @@
    data-status is the last state the server confirmed. The class is what is on
    screen, which a tap changes before the save lands — so a failed save has
    something true to revert to rather than the guess it just painted. #}
+
+{# Whether this student has anything beyond a present/absent mark. It decides
+   only whether the disclosure below starts open: a row that already holds a
+   topic, a score or a remark must never hide it behind a tap, because then the
+   only way to find out what is recorded is to open all 23.
+
+   .get() rather than attribute access, and `entry and` in front: a student with
+   no document at all makes `entry` None, and `entry.score is not none` would be
+   asking that question of Undefined, which answers True and would have opened
+   every empty row on the page. #}
+{% set has_extras = entry and (entry.get('slot_1') or entry.get('slot_2')
+                    or entry.get('remark') or entry.get('score') is not none
+                    or entry.get('max_marks') is not none) %}
 <li id="row-{{ student._id }}"
     class="row is-{{ entry.status or 'unmarked' }}"
     data-status="{{ entry.status or 'unmarked' }}"
@@ -24,58 +37,82 @@
   <button class="absent" onclick="optimistic(this, 'absent')"
           hx-post="/entries" hx-vals='{"status": "absent"}'>absent</button>
 
-  {# Topics and remark save themselves on blur, each sending only its own field,
-     so none of them can overwrite the toggle or each other.
-
-     hx-swap="none" because the reply is a whole row: swapping it while she is
-     typing in the next box would replace that box mid-word and take the focus
-     with it. The save still happens, and a failure still reaches markFailed.
-
-     hx-sync="this:replace" overrides the row's rule above. Inheriting it would
-     mean blurring a topic aborts an in-flight save of the toggle. Scoped to the
-     input, only a second save of the same box replaces the first. #}
-  <input class="topic" name="slot_1" value="{{ entry.slot_1 or '' }}"
-         placeholder="slot 1" autocomplete="off"
-         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
-  <input class="topic" name="slot_2" value="{{ entry.slot_2 or '' }}"
-         placeholder="slot 2" autocomplete="off"
-         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
-
-  {# §3.4 — score over max_marks, one test a day. Same isolation as the topics
-     above: blur, no swap, synced to itself.
-
-     `or ''` is wrong for these two, because a legitimate score of 0 is falsy and
-     would render as an empty box. They test against none explicitly instead —
-     which also covers `entry` itself being None, since Undefined is not none.
-
-     Disabled and shown empty when the student is absent: you cannot score
-     someone who was not there. A disabled input is never submitted, so the
-     fields cannot save while the row is in that state either. #}
-  {% set absent = entry.status == 'absent' %}
-  <span class="marks-label" aria-hidden="true">Test Score</span>
-  <input class="mark" name="score" type="number" inputmode="numeric"
-         placeholder="score" aria-label="Test score" autocomplete="off"
-         {% if absent %}disabled{% endif %}
-         value="{{ '' if absent else (entry.score if entry.score is not none else '') }}"
-         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
-  <span class="slash" aria-hidden="true">/</span>
-  <input class="mark" name="max_marks" type="number" inputmode="numeric"
-         placeholder="max marks" aria-label="Test score, out of" autocomplete="off"
-         {% if absent %}disabled{% endif %}
-         value="{{ '' if absent else (entry.max_marks if entry.max_marks is not none else '') }}"
-         hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
-
-  {# <details> is the expandable field, with no JavaScript to make it open. #}
-  <details class="remark">
-    <summary title="Remark">✎</summary>
-    <input name="remark" value="{{ entry.remark or '' }}"
-           placeholder="remark" autocomplete="off"
-           hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
-  </details>
-
-  <button class="retry" type="button">retry</button>
   {# Always in the markup, hidden until something saves. The toggle's swap brings
      it back already visible; the inputs do not swap, so their handler reveals
      this same span rather than building a second kind of tick. #}
   <span class="tick" {% if not saved %}hidden{% endif %}>✓</span>
+
+  {# Everything below the mark lives behind this. Taking the register is 23 taps
+     on present or absent; the topics and the score are the occasional case, and
+     showing all six boxes for all 23 students meant 231px of row for the one
+     line anybody reads. Closed, this is a chip; open, it is exactly what it was.
+
+     <details>, not a class toggled by script, for two reasons: the remark box
+     already used it, so the page keeps one disclosure idiom; and htmx replaces
+     this whole <li> on every present/absent tap, which would wipe any open state
+     JavaScript were holding. Rendering `open` from the saved document survives
+     the swap, because the server decides it again each time. #}
+  <details class="more"{% if has_extras %} open{% endif %}>
+    <summary>
+      <span class="sr-only">Topics, test score and remark</span>
+      <span class="more-label" aria-hidden="true">Details</span>
+      <svg class="chev" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <path d="M4 6.5 8 10.5 12 6.5" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </summary>
+
+    <div class="more-body">
+      {# Topics and remark save themselves on blur, each sending only its own
+         field, so none of them can overwrite the toggle or each other.
+
+         hx-swap="none" because the reply is a whole row: swapping it while she is
+         typing in the next box would replace that box mid-word and take the focus
+         with it. The save still happens, and a failure still reaches markFailed.
+
+         hx-sync="this:replace" overrides the row's rule above. Inheriting it would
+         mean blurring a topic aborts an in-flight save of the toggle. Scoped to the
+         input, only a second save of the same box replaces the first. #}
+      <input class="topic" name="slot_1" value="{{ entry.slot_1 or '' }}"
+             placeholder="slot 1" autocomplete="off"
+             hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+      <input class="topic" name="slot_2" value="{{ entry.slot_2 or '' }}"
+             placeholder="slot 2" autocomplete="off"
+             hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+
+      {# §3.4 — score over max_marks, one test a day. Same isolation as the topics
+         above: blur, no swap, synced to itself.
+
+         `or ''` is wrong for these two, because a legitimate score of 0 is falsy and
+         would render as an empty box. They test against none explicitly instead —
+         which also covers `entry` itself being None, since Undefined is not none.
+
+         Disabled and shown empty when the student is absent: you cannot score
+         someone who was not there. A disabled input is never submitted, so the
+         fields cannot save while the row is in that state either. #}
+      {% set absent = entry.status == 'absent' %}
+      <span class="marks-label" aria-hidden="true">Test Score</span>
+      <input class="mark" name="score" type="number" inputmode="numeric"
+             placeholder="score" aria-label="Test score" autocomplete="off"
+             {% if absent %}disabled{% endif %}
+             value="{{ '' if absent else (entry.score if entry.score is not none else '') }}"
+             hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+      <span class="slash" aria-hidden="true">/</span>
+      <input class="mark" name="max_marks" type="number" inputmode="numeric"
+             placeholder="max marks" aria-label="Test score, out of" autocomplete="off"
+             {% if absent %}disabled{% endif %}
+             value="{{ '' if absent else (entry.max_marks if entry.max_marks is not none else '') }}"
+             hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+
+      {# Was a second <details> nested inside the row, opened by a ✎ glyph. It is
+         a plain field now: once the row's own disclosure is what hides the
+         occasional work, a disclosure inside a disclosure is one tap of
+         ceremony for one text box. #}
+      <input class="remark" name="remark" value="{{ entry.remark or '' }}"
+             placeholder="Remark" aria-label="Remark" autocomplete="off"
+             hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
+    </div>
+  </details>
+
+  <button class="retry" type="button">retry</button>
 </li>

@@ -18,13 +18,16 @@
     gap: .45rem .55rem;
     padding: .75rem .9rem;
     margin: 0 0 .7rem;
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--amber);
+    border: 1px solid rgba(217, 164, 65, .32);
     border-radius: var(--radius);
     background: var(--amber-tint);
     box-shadow: var(--edge), var(--lift);
   }
-  .datebar:has(.today) { background: var(--green-tint); border-left-color: var(--green); }
+  /* The tint is the whole signal, as it is on a student row. The 4px amber bar
+     that used to run down this edge said the same thing a second time, louder. */
+  .datebar:has(.today) {
+    background: var(--green-tint); border-color: rgba(55, 133, 78, .38);
+  }
 
   /* This is the page's heading — it carries the one fact the screen is about —
      so it takes the same face, weight and tracking as the dashboard's.
@@ -39,6 +42,7 @@
     font-family: var(--font-heading);
     font-size: clamp(1.3rem, 6vw, 1.75rem);
     font-weight: 700; letter-spacing: -.02em; line-height: 1.15;
+    font-variant-numeric: tabular-nums;
     margin-right: .1rem;
   }
   /* A translucent chip rather than a colour of its own. On a tinted bar it
@@ -90,12 +94,61 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+
+  /* ---- Progress -------------------------------------------------------- */
+  /* Taking the register is a task with an end, and the page never said how far
+     along it was. Sticky, because the answer is worth having at student 18 as
+     much as at student 1, and the list is long enough that a header at the top
+     of the document would have scrolled away before it was useful.
+
+     Counted in the browser from the rows already on the page — no new route, no
+     new query, and it updates on the tap rather than on the next page load. */
+  .progress {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem 0 .55rem;
+    margin: 0 0 .7rem;
+    background: var(--paper);
+  }
+  .progress-count {
+    flex: 0 0 auto;
+    font-size: .74rem; font-weight: 600; letter-spacing: .02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+    transition: color .2s ease;
+  }
+  .progress-track {
+    flex: 1 1 auto; height: 3px;
+    background: rgba(255, 255, 255, .07);
+    border-radius: 999px; overflow: hidden;
+  }
+  /* Full width and scaled down, rather than a width that grows. Animating width
+     is a layout change on every frame; a transform is not, and this one runs on
+     every tap of 23. transform-origin is what makes it grow from the left rather
+     than out from the middle. */
+  .progress-fill {
+    height: 100%; width: 100%;
+    transform: scaleX(0); transform-origin: left;
+    background: var(--green);
+    border-radius: 999px;
+    transition: transform .28s cubic-bezier(.16, 1, .3, 1);
+  }
+  /* Everyone marked. The count goes to full-strength ink — the one moment on
+     this screen worth a change of colour, and it is the moment the job is
+     finished. */
+  .progress.is-done .progress-count { color: var(--ink); }
+
   /* ---- Search ---------------------------------------------------------- */
   #search {
     width: 100%; min-height: var(--tap);
     padding: 0 .85rem; margin: 0 0 .9rem;
     background: var(--card); color: var(--ink);
-    border: 1px solid var(--line-strong); border-radius: 10px;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     box-shadow: var(--edge);
   }
   #search::placeholder { color: var(--ink-faint); }
@@ -104,27 +157,26 @@
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 
   /* Twelve columns is what lets a flat row of children become tidy lines with no
-     wrapper elements: name over toggle over topics over the test score. Every
-     child is placed explicitly, so the markup keeps its existing order and ids.
+     wrapper elements. Every child is placed explicitly, so the markup keeps its
+     existing order and ids.
 
-     It was six until the score line needed a label, a short field, a slash and a
-     second short field on one line — four items that six tracks cannot
-     proportion. Twelve is a straight subdivision, not a reflow: two of these
-     tracks plus the gap between them measure exactly one of the old ones, so
-     every other line is unchanged to the pixel. */
+     Two lines now, not five. The row used to show all six boxes for every
+     student, which cost 231px each — 23 students made a 5,778px page, six and a
+     half screens of scrolling, and only 3.7 students visible at a time. The one
+     line anybody reads on a normal day is the name and the mark, so that is what
+     a row is; the rest is behind the disclosure on line 3. */
   .row {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
     column-gap: .45rem;
-    row-gap: .5rem;
+    row-gap: .45rem;
     align-items: center;
-    padding: .8rem .85rem;
+    padding: .7rem .8rem;
     background: var(--card);
     border: 1px solid var(--line);
-    border-left: 4px solid var(--line-strong);
     border-radius: var(--radius);
     box-shadow: var(--edge), var(--lift);
-    transition: border-left-color .16s ease, background-color .16s ease;
+    transition: background-color .16s ease, border-color .16s ease;
   }
   /* .row sets display:grid, which would otherwise beat the browser's own
      [hidden] { display: none } and leave hidden rows on screen. */
@@ -135,39 +187,22 @@
              overflow-wrap: anywhere; }
   /* Set on its own dark plate so a column of roll numbers reads as an index
      down the right edge rather than as more sentence. */
-  .roll    { grid-area: 1 / 9 / 2 / 13; justify-self: end;
+  .roll    { grid-area: 1 / 10 / 2 / 13; justify-self: end;
              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
              font-size: .74rem; font-variant-numeric: tabular-nums;
              letter-spacing: .01em; color: var(--ink-faint);
              background: rgba(0, 0, 0, .28); border-radius: 6px;
              padding: .15rem .42rem; }
-  .present { grid-area: 2 / 1 / 3 / 5; }
-  .absent  { grid-area: 2 / 5 / 3 / 9; }
-  .tick    { grid-area: 2 / 9 / 3 / 11; justify-self: center; }
-  .remark  { grid-area: 2 / 11 / 3 / 13; }
-  [name="slot_1"] { grid-area: 3 / 1 / 4 / 7; }
-  [name="slot_2"] { grid-area: 3 / 7 / 4 / 13; }
-  /* Line 4, §5.3, read as one sentence: "Test Score: 18 / 25". The label anchors
-     the left, the two fields are the same width so the pair reads as a fraction
-     rather than two unrelated boxes, and the slash gets a track of its own so it
-     sits centred between them instead of drifting against one. */
-  /* Line 4 is the label alone, line 5 the fraction. The two fields take the same
-     halves of the row as slot 1 and slot 2 above, so all four boxes share the
-     same left and right edges down the row.
-
-     The slash is placed across the whole line rather than in a track of its own:
-     centred in a 12-column grid it lands exactly on the seam between the two
-     halves, which is where the gap is. A track would have had to come out of the
-     fields. */
-  .marks-label       { grid-area: 4 / 1 / 5 / 13; }
-  [name="score"]     { grid-area: 5 / 1 / 6 / 7; justify-self: start; }
-  .slash             { grid-area: 5 / 1 / 6 / 13; justify-self: center;
-                       pointer-events: none; }
-  [name="max_marks"] { grid-area: 5 / 7 / 6 / 13; justify-self: end; }
-  /* A sixth line exists only when something needs it. Both of these are absent
-     from the grid until then, so an ordinary row stays five lines tall. */
-  .remark[open]   { grid-area: 6 / 1 / 7 / 9; }
-  .retry          { grid-area: 6 / 9 / 7 / 13; }
+  /* Up onto line 1 beside the roll number. It was taking a slot on the toggle
+     line, which is now the only thing that line does. */
+  .tick    { grid-area: 1 / 9 / 2 / 10; justify-self: end; }
+  .present { grid-area: 2 / 1 / 3 / 7; }
+  .absent  { grid-area: 2 / 7 / 3 / 13; }
+  .more    { grid-area: 3 / 1 / 4 / 13; }
+  /* Only ever on screen when a save has failed, so it costs nothing until then —
+     display:none takes it out of the grid entirely. Full width because at that
+     point it is the only thing worth tapping. */
+  .retry   { grid-area: 4 / 1 / 5 / 13; }
 
   /* ---- Toggle ---------------------------------------------------------- */
   .present, .absent {
@@ -198,15 +233,19 @@
   /* A phone has no hover, so a tap that changes nothing for 200ms feels broken.
      This lands before the optimistic repaint does. */
   .present:active, .absent:active { transform: scale(.97); }
-  /* The left edge repeats the state, so progress down a list of 41 is legible
-     from a scroll rather than by reading each toggle. */
-  .row.is-present { border-left-color: var(--green); }
-  .row.is-absent  { border-left-color: var(--terracotta); }
+
+  /* The whole row carries the state, not a 4px bar down its left edge. Scrolling
+     23 students, what you want to know is which ones are done, and a tinted
+     surface answers that from the corner of your eye where a stripe had to be
+     looked for. It also drops the one shape — the thick coloured side border —
+     that reads as generic template rather than as this app. */
+  .row.is-present { background: var(--green-tint);      border-color: rgba(55, 133, 78, .42); }
+  .row.is-absent  { background: var(--terracotta-tint); border-color: rgba(189, 74, 102, .42); }
 
   /* ---- Topics and remark ----------------------------------------------- */
   /* Sunk below the card rather than raised on it, so an empty topic box reads
      as a slot waiting for text instead of another button. */
-  .topic, .remark input {
+  .topic, .remark {
     width: 100%; min-width: 0; min-height: var(--tap);
     padding: 0 .65rem;
     background: rgba(0, 0, 0, .25); color: var(--ink);
@@ -214,7 +253,7 @@
     transition: border-color .14s ease, background-color .14s ease,
                 box-shadow .14s ease;
   }
-  .topic::placeholder, .remark input::placeholder { color: var(--ink-faint); }
+  .topic::placeholder, .remark::placeholder { color: var(--ink-faint); }
 
   /* Same sunken treatment as a topic box, but sized for two or three digits and
      centred so the pair reads as a fraction across the slash. */
@@ -258,33 +297,73 @@
   .mark::placeholder { color: var(--ink-faint); }
   .slash { color: var(--ink-faint); font-size: 1rem; }
 
-  .topic:focus, .mark:focus, .remark input:focus, #search:focus, #picker:focus {
+  .topic:focus, .mark:focus, .remark:focus, #search:focus, #picker:focus {
     outline: none;
     background: rgba(0, 0, 0, .38);
     border-color: var(--focus);
     box-shadow: var(--focus-ring);
   }
 
-  .remark summary {
-    display: flex; align-items: center; justify-content: center;
-    min-height: var(--tap);
-    border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: rgba(0, 0, 0, .25); color: var(--ink-soft);
-    font-size: 1.05rem; cursor: pointer;
+  /* ---- The row's disclosure -------------------------------------------- */
+  /* A chip, not a bar: closed, this is the only thing line 3 costs, so it stays
+     as small as a control can be and still be found. Left-aligned under the
+     name rather than centred, because it belongs to this student and the eye is
+     already down that edge reading names. */
+  .more > summary {
+    display: inline-flex; align-items: center; gap: .3rem;
+    width: fit-content;
+    position: relative;                     /* for the tap area below */
+    min-height: 1.85rem; padding: 0 .5rem 0 .55rem;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: rgba(0, 0, 0, .22); color: var(--ink-faint);
+    font-size: .66rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .09em;
+    cursor: pointer;
     list-style: none;                       /* drop the disclosure triangle */
-    transition: background-color .14s ease, color .14s ease, transform .1s ease;
+    transition: color .14s ease, background-color .14s ease,
+                border-color .14s ease, transform .1s ease;
   }
-  .remark summary:active { transform: scale(.97); }
-  .remark summary::-webkit-details-marker { display: none; }
-  /* Only when open, so a closed <details> keeps the browser's own rule that
-     hides everything but the summary. */
-  .remark[open] { display: flex; align-items: center; gap: .45rem; }
-  .remark[open] summary {
-    flex: 0 0 auto; padding: 0 .75rem;
-    background: var(--amber-tint); border-color: var(--amber-tint);
-    color: var(--amber);
+  .more > summary::-webkit-details-marker { display: none; }
+  /* The chip reads at 30px because that is all the room line 3 can spare, but a
+     thumb needs 44. This stretches the hit area over the row-gap either side
+     without the chip itself growing. */
+  .more > summary::after {
+    content: ""; position: absolute; inset: -7px -10px;
   }
-  .remark[open] input { flex: 1 1 auto; }
+  .more > summary:active { transform: scale(.97); }
+  .more[open] > summary {
+    color: var(--ink-soft); border-color: var(--line-strong);
+  }
+  .chev { transition: transform .18s ease; }
+  .more[open] > summary .chev { transform: rotate(180deg); }
+
+  /* The five boxes, in the same proportions they had when they were part of the
+     row itself — two topics on one line, then the label, then the fraction, then
+     the remark. Its own grid, because it is its own block now. */
+  .more-body {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    column-gap: .45rem;
+    row-gap: .5rem;
+    align-items: center;
+    margin-top: .55rem;
+  }
+  [name="slot_1"] { grid-area: 1 / 1 / 2 / 7; }
+  [name="slot_2"] { grid-area: 1 / 7 / 2 / 13; }
+  /* Line 2 is the label alone, line 3 the fraction. The two fields take the same
+     halves as slot 1 and slot 2 above, so all four boxes share the same left and
+     right edges down the block.
+
+     The slash is placed across the whole line rather than in a track of its own:
+     centred in a 12-column grid it lands exactly on the seam between the two
+     halves, which is where the gap is. A track would have had to come out of the
+     fields. */
+  .marks-label       { grid-area: 2 / 1 / 3 / 13; }
+  [name="score"]     { grid-area: 3 / 1 / 4 / 7; justify-self: start; }
+  .slash             { grid-area: 3 / 1 / 4 / 13; justify-self: center;
+                       pointer-events: none; }
+  [name="max_marks"] { grid-area: 3 / 7 / 4 / 13; justify-self: end; }
+  .remark            { grid-area: 4 / 1 / 5 / 13; }
 
   /* ---- Saved and failed ------------------------------------------------ */
   .tick { color: var(--green); font-size: 1.05rem; line-height: 1; }
@@ -305,7 +384,6 @@
      down a fast scroll. */
   .row.failed {
     border-color: var(--amber);
-    border-left-color: var(--amber);
     background: var(--amber-tint);
     box-shadow: var(--edge),
                 0 0 0 1px rgba(217, 164, 65, .28),
@@ -326,6 +404,12 @@
   <input type="date" id="picker" value="{{ date }}" max="{{ today }}">
 </div>
 <input id="search" type="search" placeholder="Search name or roll number">
+{# The count is the readable version; the bar is the same fact for the corner of
+   the eye, so it is hidden from assistive tech rather than described twice. #}
+<div class="progress" id="progress">
+  <span class="progress-count" id="progress-count"></span>
+  <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+</div>
 <ul>
   {% for student in students %}
     {% with entry = entry_by_id.get(student._id) %}
@@ -386,6 +470,34 @@
     const row = source.closest(".row");
     if (row) row.querySelector(".tick").hidden = false;
   });
+
+  // How far through the register she is. Counted from the rows already in the
+  // DOM rather than from a number the server sends, so it needs no route and no
+  // second query, and it answers on the tap instead of on the next page load.
+  const progress = document.getElementById("progress");
+  const progressCount = document.getElementById("progress-count");
+  const progressFill = document.getElementById("progress-fill");
+
+  function updateProgress() {
+    const rows = document.querySelectorAll(".row");
+    let marked = 0;
+    for (const row of rows) {
+      if (row.classList.contains("is-present") || row.classList.contains("is-absent")) marked++;
+    }
+    // Every student, not just the ones surviving the search box. Filtering is a
+    // way of finding one person, not a smaller register.
+    progressCount.textContent = marked + " of " + rows.length + " marked";
+    progressFill.style.transform = "scaleX(" + (rows.length ? marked / rows.length : 0) + ")";
+    progress.classList.toggle("is-done", rows.length > 0 && marked === rows.length);
+  }
+  updateProgress();
+
+  // Two things move a row between states: optimistic() paints the tap, and htmx
+  // swaps the server's row in behind it. Both have to recount. The click handler
+  // is on body and so runs after the inline onclick that repaints, and survives
+  // the swap replacing the buttons it would otherwise have been bound to.
+  document.body.addEventListener("click", updateProgress);
+  document.body.addEventListener("htmx:afterSwap", updateProgress);
 
   // The picker is a plain navigation control: pick a day, load that day.
   document.getElementById("picker").addEventListener("change", (event) => {

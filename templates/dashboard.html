@@ -28,7 +28,22 @@
 
   /* 120px wide; the height follows the file's own 1036x381 and lands at ~44px,
      the same as the logout link's tap target, so the two sit level in row 1. */
-  .logo { grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto; }
+  /* The mark's red is a pure saturated scarlet, and the rest of the app is warm
+     near-black and off-white with two muted semantic hues. On the login screen
+     that red is the brand moment and earns every bit of its loudness; at 120px
+     in a header it is simply the highest-chroma thing on a quiet page, competing
+     with the one green accent that actually means something. Muted rather than
+     removed: this is still the mark, just not shouting in a header.
+
+     saturate(), not grayscale(). The wordmark is the only red part of a two-tone
+     PNG — "HR" is already white — so desaturating drops that red to a luminance
+     of about 21% and ACADEMY all but disappears against the page. Pulling the
+     chroma down instead lands it on an oxblood that sits with the warm neutrals
+     and stays legible, and it does not depend on the exact red in the file. */
+  .logo {
+    grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto;
+    filter: saturate(.35) brightness(1.05);
+  }
 
   .logout {
     grid-row: 1; grid-column: 2; justify-self: end;
@@ -67,6 +82,7 @@
     margin: .5rem 0 0;
     display: flex; align-items: center; gap: .4rem;
     font-size: .8125rem; color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
   }
   .meta .ti { font-size: 1rem; }
 
@@ -81,10 +97,7 @@
     align-items: center;
     column-gap: .85rem;
     padding: 1rem 1.1rem;                             /* 16px vertical */
-    /* Square where the coloured edge is, rounded away from it — the edge reads
-       as a bar attached to the tile rather than a stripe inside a pill. Applied
-       to the placeholders too, so the three share one silhouette. */
-    border-radius: 0 var(--radius) var(--radius) 0;
+    border-radius: var(--radius);
     text-decoration: none;
   }
   .tile .ti { font-size: 1.5rem; }
@@ -99,11 +112,13 @@
     font-size: .8125rem; line-height: 1.2; color: var(--ink-faint);
   }
 
-  /* Live: raised off the page, full-strength text, green edge and icon, and it
-     moves when pressed. */
+  /* Live: raised off the page, full-strength text, green icon, and it moves when
+     pressed. The 4px green bar down the left edge is gone — being the only
+     raised, full-contrast tile with an accent icon and a chevron already says
+     "this one works" four times over, and the bar was the fifth. */
   a.tile {
     background: var(--card); color: var(--ink);
-    border: 1px solid var(--line); border-left: 4px solid var(--green);
+    border: 1px solid var(--line);
     box-shadow: var(--edge), var(--lift);
     transition: transform .1s ease, border-color .14s ease;
   }
@@ -111,21 +126,35 @@
   a.tile .ti-checkbox { color: var(--green); }
   a.tile .ti-chevron-right { font-size: 1.15rem; color: var(--ink-faint); }
 
-  /* Not yet built: sunk into the page instead of raised, dashed rather than
-     solid, no green, no press state, and the cursor never becomes a pointer.
-     Dimmed, but the title stays readable — this is information, not a disabled
-     control, and a label nobody can read reads as broken rather than as
-     pending. There is no trailing glyph, because nothing follows a tap. */
+  /* Not yet built: sunk into the page instead of raised, quieter than the live
+     tile in every respect, no press state, and the cursor never becomes a
+     pointer. Dimmed, but the title stays readable — this is information, not a
+     disabled control, and a label nobody can read reads as broken rather than
+     as pending.
+
+     Solid, not dashed. Two of the three tiles on the app's main screen are
+     these, and a dashed outline is the drawing convention for a hole where
+     something should be — it made the dashboard look like scaffolding rather
+     than like a product with more coming. The same silhouette as the live tile,
+     one step back in contrast, says "planned" without saying "unfinished". */
   .soon {
-    background: rgba(0, 0, 0, .22); color: var(--ink-soft);
-    border: 1px dashed var(--line-strong); border-left: 4px dashed var(--line-strong);
+    background: rgba(0, 0, 0, .18); color: var(--ink-soft);
+    border: 1px solid var(--line);
     cursor: default;
   }
   .soon .ti { color: var(--ink-faint); }
-  .soon .tile-title { color: var(--ink-soft); }
-  .soon .tile-sub {
-    font-size: .7rem; font-weight: 600;
+  .soon .tile-title { color: var(--ink-soft); font-weight: 500; }
+  /* A chip where the live tile has its chevron, in the same shape the entries
+     screen already uses for its "today" badge. It replaces a full line of
+     letterspaced capitals reading COMING SOON, which was the loudest text on the
+     page and was announcing the one thing the page cannot do. */
+  .soon-chip {
+    font-size: .62rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: .1em;
+    color: var(--ink-faint);
+    background: rgba(255, 255, 255, .06);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+    border-radius: 999px; padding: .24rem .5rem .2rem;
   }
 </style>
 
@@ -161,14 +190,14 @@
     <i class="ti ti-user-plus" aria-hidden="true"></i>
     <span class="tile-text">
       <span class="tile-title">Onboard a new student</span>
-      <span class="tile-sub">Coming soon</span>
     </span>
+    <span class="soon-chip">Soon</span>
   </div>
   <div class="tile soon">
     <i class="ti ti-chart-bar" aria-hidden="true"></i>
     <span class="tile-text">
       <span class="tile-title">Student data</span>
-      <span class="tile-sub">Coming soon</span>
     </span>
+    <span class="soon-chip">Soon</span>
   </div>
 </nav>
