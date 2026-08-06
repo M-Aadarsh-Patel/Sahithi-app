@@ -20,6 +20,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    /* The outermost of the three intervals. All three are gaps on one 8px base —
+       48 here, 24 inside the form, 8 inside the credential block — so the page
+       has a spacing scale rather than a set of one-off margins, and each level of
+       nesting is visibly a step tighter than the one containing it. */
+    gap: 3rem;
     padding-top: 2rem;
     padding-bottom: calc(2rem + env(safe-area-inset-bottom));
     background: #0a0908;
@@ -32,36 +37,108 @@
   /* Declared for parity with the other two screens' headings, though it changes
      nothing today: this h1's content is the logo image, not text. It matters the
      moment any words are added beside or below the mark. */
-  h1 { margin: 0 0 2.4rem; font-family: var(--font-heading); }
-  .logo {
-    display: block; margin: 0 auto;
-    width: min(18rem, 88%); height: auto;
+  h1 { margin: 0; font-family: var(--font-heading); }
+  /* Full column width, not 88% of it. The PNG is trimmed — its ink runs to both
+     edges of the canvas — so a 100% box puts the mark's own left and right edges
+     exactly on the edges of the controls below it. At 88% the mark sat inset by
+     24px on each side, an offset that matched nothing else on the page and gave
+     a two-element composition three different vertical edges. */
+  .logo { display: block; width: 100%; height: auto; }
+
+  /* ---- Arrival ---------------------------------------------------------- */
+
+  /* A pool of warm light behind the mark, and the mark resolving out of it. The
+     page is a near-black field by design, so the one thing it can do that no
+     other screen in the app can is turn a light on. Everything else here follows
+     that light in.
+
+     Fixed rather than absolute, which takes it out of body's flex flow — a
+     static ::before would have become a flex item and pushed the stack down.
+     z-index -1 puts it above the page background and behind every control, so
+     the form never sits inside a wash. */
+  body::before {
+    content: "";
+    position: fixed;
+    left: 50%; top: 38svh;
+    width: min(48rem, 150vw); aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    /* Two stops, both barely there: an off-white core the colour of --ink and an
+       amber falloff, the same amber the app uses for warmth elsewhere. At peak
+       this lifts the field behind the logo by roughly one step of grey — enough
+       to read as a lamp, not enough to cost the cut-out its contrast. */
+    background: radial-gradient(closest-side,
+                  rgba(242, 239, 233, .07),
+                  rgba(217, 164, 65, .045) 45%,
+                  transparent 72%);
+    pointer-events: none;
+    z-index: -1;
+    animation: lamp 1.1s cubic-bezier(.16, 1, .3, 1) both;
   }
 
-  /* 600ms, and the form starts at 300ms — still exactly halfway through — so the
-     two overlap rather than queueing. "both" is what keeps the form at opacity 0
-     through its own delay; without it the controls would show at full strength
-     first and then fade in from nothing. */
-  @keyframes logo-in {
-    from { opacity: 0; transform: translateY(16px); }
+  /* Overshoots to full and settles back to .62, which is what makes it read as a
+     light coming up rather than a shape fading in. `both` on this one only: it
+     is the single element whose resting state differs from its base style. */
+  @keyframes lamp {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.72); }
+    55%  { opacity: 1; }
+    100% { opacity: .62; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* Blur, not just a fade. A logo that fades in is a logo appearing; a logo that
+     sharpens is one the light has reached. It is one bounded filter on one
+     image, run once. */
+  @keyframes mark-in {
+    from { opacity: 0; transform: translateY(14px) scale(.985); filter: blur(9px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+  @keyframes lift-in {
+    from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: none; }
   }
-  @keyframes form-in {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  .logo { animation: logo-in .6s cubic-bezier(.22, .61, .36, 1) both; }
-  form  { animation: form-in .5s ease-out .3s both; }
 
-  /* animation: none, not a shortened duration — the delay has to go too, or the
-     form would still be invisible for its first 200ms. */
-  @media (prefers-reduced-motion: reduce) {
-    .logo, form { animation: none; }
-  }
+  /* `backwards`, never `forwards` or `both`. A forwards fill keeps applying the
+     final keyframe after the animation ends, at a priority that beats every rule
+     below it — the buttons' :active transforms would silently stop working for
+     the rest of the session. backwards covers the delay and then hands the
+     element back to its own styles. */
+  .logo     { animation: mark-in .7s cubic-bezier(.16, 1, .3, 1) backwards; }
+  .profiles { animation: lift-in .5s cubic-bezier(.16, 1, .3, 1) .30s backwards; }
+  #password { animation: lift-in .5s cubic-bezier(.16, 1, .3, 1) .37s backwards; }
+  #signin   { animation: lift-in .5s cubic-bezier(.16, 1, .3, 1) .44s backwards; }
 
+  /* ---- Retry ------------------------------------------------------------ */
+
+  /* A wrong password re-renders this whole page, so without this the welcome
+     plays again on every failed attempt — the light comes up a second and a
+     third time at someone who never left. On the retry the page is simply
+     already there, the lamp sits at its resting value, and the only things that
+     move are the two that changed. */
+  .retry .logo, .retry .profiles, .retry #password, .retry #signin {
+    animation: none;
+  }
+  .retry::before { animation: none; opacity: .62; }
+
+  /* ---- Controls --------------------------------------------------------- */
+
+  /* The page is a mark and a two-step task: say who you are, prove it, then go.
+     The two things you supply are one block; the button is what happens after it,
+     so it is the one thing set apart.
+
+     Three intervals, deliberately far apart — 38px under the mark, 8px inside the
+     block, 24px before the button. Before this the three gaps below the logo were
+     38 / 17.5 / 12.8, which is one interval repeated: four evenly stacked slabs
+     with no grouping in them at all. Worse, the tightest of the three sat between
+     the password and the button, binding an input to an action while pushing
+     apart the two fields that actually belong together. */
+  form { display: flex; flex-direction: column; gap: 1.5rem; }
+  .credentials { display: flex; flex-direction: column; gap: .5rem; }
+
+  /* Same .5rem as the block it sits in, so the pair of tiles and the field below
+     them are on one interval and the block reads as a single control surface
+     rather than as three things that happen to be near each other. */
   .profiles {
     display: grid; grid-template-columns: 1fr 1fr;
-    gap: .6rem; margin-bottom: 1.1rem;
+    gap: .5rem;
   }
   .profiles label {
     display: flex; align-items: center; justify-content: center;
@@ -77,6 +154,9 @@
   /* Off-screen rather than display:none, so the radio stays keyboard-reachable
      and announced by screen readers. */
   .profiles input { position: absolute; opacity: 0; }
+  /* A whole tile going solid green is already the loudest state change on the
+     page. Adding a green glow under it was decoration on top of a signal that
+     had already landed, so the elevation stays exactly what it is unselected. */
   .profiles label:has(input:checked) {
     background: var(--green); border-color: var(--green); color: #fff;
   }
@@ -89,7 +169,7 @@
      background this dark leaves a hole rather than a control. */
   #password {
     width: 100%; min-height: 3rem;
-    padding: 0 .85rem; margin-bottom: .8rem;
+    padding: 0 .85rem;
     background: var(--card); color: var(--ink);
     border: 1px solid var(--line-strong); border-radius: 10px;
     box-shadow: var(--edge);
@@ -100,8 +180,23 @@
   #password:focus {
     outline: none; border-color: var(--focus); box-shadow: var(--focus-ring);
   }
+  /* The banner names the problem; this points at the field that fixes it, in the
+     same amber, and then lets go. It ends on the field's own border colour, so
+     there is nothing to fill forward. */
+  @keyframes wrong-field {
+    0%, 100% { border-color: var(--line-strong); }
+    18%, 65% { border-color: var(--amber); }
+  }
+  .retry #password { animation: wrong-field .9s ease .1s backwards; }
+  /* Tapping the field is the answer to the prompt, so the prompt stops. Without
+     this the amber keeps overriding the focus border for the rest of its run,
+     and typing into a field that has not visibly taken focus reads as broken. */
+  #password:focus { animation: none; }
 
+  /* position/overflow are for the pending sweep below: an ::after the width of
+     the button, cropped to its rounded corners. */
   #signin {
+    position: relative; overflow: hidden;
     width: 100%; min-height: 3rem;
     background: var(--ink); color: var(--paper);
     border: 1px solid var(--ink); border-radius: 10px;
@@ -111,29 +206,96 @@
   }
   #signin:active { transform: scale(.985); opacity: .9; }
 
+  /* Signing in is a full-page POST, and on a cold server it can sit for a second
+     or more with the tap already forgotten and nothing on screen saying the app
+     heard it. The sweep is the only thing on this page that loops, and it only
+     ever runs while the browser is already navigating away. */
+  #signin::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(100deg,
+                  transparent 32%, rgba(16, 15, 14, .16) 50%, transparent 68%);
+    opacity: 0;
+  }
+  /* No dimming here. The sweep is the whole signal, and fading the one primary
+     action on the page makes a button that is working look like a button that
+     is unavailable. */
+  .sending #signin { pointer-events: none; }
+  .sending #signin::after { opacity: 1; animation: sweep 1.05s linear infinite; }
+  @keyframes sweep {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+  }
+
   /* Amber, not the rose used for absent. A wrong password is a correctable
      mistake, and it should not wear the same colour as a student's record.
      Bordered all round rather than on the left, so it sits centred with
      everything else instead of being anchored to one edge. */
   .error {
-    margin: 0 0 1.1rem; padding: .7rem .85rem;
+    margin: 0; padding: .7rem .85rem;
     background: var(--amber-tint); color: var(--amber);
     border: 1px solid rgba(217, 164, 65, .35);
     border-radius: var(--radius-sm); font-size: .92rem;
+    animation: flag-in .3s cubic-bezier(.16, 1, .3, 1) backwards;
+  }
+  /* Down from under the logo, which is where it comes from in the layout — the
+     form below is pushed down by exactly this much when it appears. */
+  @keyframes flag-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* The shared rule in _style.html crushes every duration to .01ms, which is the
+     right answer for a one-shot and a strobe for anything set to `infinite`, so
+     the sweep has to be switched off by name. The two states that were carried
+     by motion then need still equivalents: the lamp holds at its resting value,
+     and the button dims, because with the sweep gone that is the only thing left
+     to say the tap was heard. */
+  @media (prefers-reduced-motion: reduce) {
+    body::before, .logo, .profiles, #password, #signin,
+    .error, .sending #signin::after { animation: none; }
+    body::before { opacity: .62; }
+    .sending #signin { opacity: .72; }
   }
 </style>
+
+{# The class is what tells the CSS this is a second attempt rather than a first
+   sight of the page. #}
+<body{% if error %} class="retry"{% endif %}>
 
 {# width/height are the intrinsic pixels, so the browser reserves the right box
    before the file arrives and the form below it never jumps. #}
 <h1><img class="logo" src="/static/logo.png" alt="HR Academy" width="1036" height="381"></h1>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" action="/login">
-  {# Radios, not submit buttons. Two submit buttons gave the form a default one,
-     so pressing Enter silently signed in as whoever came first in the markup. #}
-  <div class="profiles">
-    <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
-    <label><input type="radio" name="username" value="nithya" required>Nithya</label>
+  {# The error moved inside this block and under the form. It is about what was
+     typed, not about the page, so it groups with the fields it describes — and
+     above them, so eye order and screen-reader order both reach it before the
+     inputs it is talking about. #}
+  <div class="credentials">
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {# Radios, not submit buttons. Two submit buttons gave the form a default one,
+       so pressing Enter silently signed in as whoever came first in the markup. #}
+    <div class="profiles">
+      <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
+      <label><input type="radio" name="username" value="nithya" required>Nithya</label>
+    </div>
+    <input id="password" type="password" name="password" placeholder="Password" required>
   </div>
-  <input id="password" type="password" name="password" placeholder="Password" required>
   <button id="signin" type="submit">Sign in</button>
 </form>
+
+<script>
+  // submit only fires once the browser's own validation has passed, so an empty
+  // password or an unpicked profile never leaves the button stuck mid-sweep.
+  document.querySelector('form').addEventListener('submit', () => {
+    document.body.classList.add('sending');
+    document.getElementById('signin').setAttribute('aria-busy', 'true');
+  });
+  // Coming back with the back button restores this page from the bfcache exactly
+  // as it was left — mid-navigation, still sweeping at a request that resolved
+  // long ago.
+  addEventListener('pageshow', () => {
+    document.body.classList.remove('sending');
+    document.getElementById('signin').removeAttribute('aria-busy');
+  });
+</script>
