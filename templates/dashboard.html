@@ -114,16 +114,16 @@
   }
 
   /* Live: raised off the page with a sheen down its face, full-strength text,
-     a green-lit chip, and it moves when pressed. The 4px green bar down the
-     left edge is gone — being the only raised, full-contrast tile with an
-     accent chip and a chevron already says "this one works" four times over,
-     and the bar was the fifth. */
+     a green-lit chip, and it moves when pressed — signed by the 4px green bar
+     down its left edge, the same mark a marked student row wears on the entries
+     screen. One state language across both screens. */
   a.tile {
     background: linear-gradient(180deg,
                   rgba(255, 255, 255, .028), rgba(255, 255, 255, 0) 55%),
                 var(--card);
     color: var(--ink);
     border: 1px solid var(--line);
+    border-left: 4px solid var(--green);
     box-shadow: var(--edge), var(--lift);
     transition: transform .1s ease, border-color .14s ease;
   }
@@ -155,6 +155,11 @@
   .soon {
     background: rgba(0, 0, 0, .18); color: var(--ink-soft);
     border: 1px solid var(--line);
+    /* The same 4px the live tile's green bar takes, in the border colour it
+       already had. Not a second accent — geometry: without it these two tiles
+       are 3px narrower on the left and every icon and title in the column stops
+       lining up with the one above. Unlit is the point, aligned is the reason. */
+    border-left: 4px solid var(--line);
     cursor: default;
   }
   .soon .ti { color: var(--ink-faint); }
