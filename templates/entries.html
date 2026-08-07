@@ -173,12 +173,22 @@
   }
   /* iOS renders the value in this pseudo-element rather than in the element
      itself, so text-align above does not reach it — this is the rule that
-     actually centres the date on the phone. The margin stays zeroed: iOS gives
-     the pseudo-element a margin of its own, and centring inside a box that is
-     already inset lands the text off-centre in the field it is drawn in. */
+     actually centres the date on the phone.
+
+     The margin iOS gives this element does two jobs at once: it centres the
+     value horizontally *and* vertically. Zeroing it is what lets text-align
+     above take the horizontal one, but it takes the vertical with it, and the
+     value drops to the top of the content box — a 16px line sitting in 42px of
+     field, riding about 10px high.
+
+     line-height is the vertical half, put back explicitly. Sized to the content
+     box (the 44px tap target less its two 1px borders) so the single line's box
+     fills the field and the glyphs centre inside it. It tracks var(--tap)
+     rather than hardcoding 42px, so the two cannot drift apart. */
   #picker::-webkit-date-and-time-value {
     text-align: center;
     margin: 0;
+    line-height: calc(var(--tap) - 2px);
   }
 
   /* ---- Progress -------------------------------------------------------- */
