@@ -142,6 +142,20 @@
     margin: 0 0 .6rem;
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     background: rgba(0, 0, 0, .25); color: var(--ink);
+    /* The date is the one value on this field, so it sits in the middle of it
+       rather than hanging off the left edge. This is what centres it on the
+       desktop, where the value is laid out by the element itself; iOS needs the
+       pseudo-element below as well. */
+    text-align: center;
+    /* The same face the date bar's own date is set in, so the two readings of
+       the day on this screen are typographically one thing rather than a
+       heading and a leftover browser default. Weight 600 and the tighter
+       tracking match the links in the bar above; the size is left at the
+       inherited 16px, which is both the field's floor for iOS and small enough
+       that it cannot compete with the 1.75rem date it sits under. */
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -.01em;
     font-variant-numeric: tabular-nums;
     /* The actual fix for the right edge running past every other field on iOS.
        box-sizing and max-width above were the first attempt and they are not
@@ -157,12 +171,13 @@
     -webkit-appearance: none;
     appearance: none;
   }
-  /* iOS renders the value in this pseudo-element, gives it a margin of its own
-     and centres it — which is why the date sat mid-field on the phone and hard
-     left on the desktop. Zeroed and set left so the picker reads the same as the
-     search box under it on both. */
+  /* iOS renders the value in this pseudo-element rather than in the element
+     itself, so text-align above does not reach it — this is the rule that
+     actually centres the date on the phone. The margin stays zeroed: iOS gives
+     the pseudo-element a margin of its own, and centring inside a box that is
+     already inset lands the text off-centre in the field it is drawn in. */
   #picker::-webkit-date-and-time-value {
-    text-align: left;
+    text-align: center;
     margin: 0;
   }
 
