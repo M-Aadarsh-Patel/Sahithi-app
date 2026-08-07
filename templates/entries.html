@@ -137,16 +137,29 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+    /* Pinned, not just floored. The line-height below sizes the line box to the
+       field, and each engine then adds its own internal padding on top of it —
+       Blink's put the border box at 46px against WebKit's 44, which is two
+       phones showing two different fields. An explicit height is what makes the
+       box the same object on both, whatever they do inside it. min-height stays
+       as the statement of the 44px tap target this is derived from. */
     min-height: var(--tap);
+    height: var(--tap);
     padding: 0 .6rem;
     margin: 0 0 .6rem;
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     background: rgba(0, 0, 0, .25); color: var(--ink);
     /* The date is the one value on this field, so it sits in the middle of it
-       rather than hanging off the left edge. This is what centres it on the
-       desktop, where the value is laid out by the element itself; iOS needs the
-       pseudo-element below as well. */
+       rather than hanging off the left edge.
+
+       The two engines lay a date control out differently and neither is worth
+       trusting on its own, so both axes are stated here and restated for WebKit
+       below. text-align is what Blink centres by; line-height sized to the
+       content box (the 44px tap target less its two 1px borders) is what centres
+       it vertically, by making the single line's box fill the field. It tracks
+       var(--tap) rather than a hardcoded 42px so the two cannot drift apart. */
     text-align: center;
+    line-height: calc(var(--tap) - 2px);
     /* The same face the date bar's own date is set in, so the two readings of
        the day on this screen are typographically one thing rather than a
        heading and a leftover browser default. Weight 600 and the tighter
@@ -171,20 +184,27 @@
     -webkit-appearance: none;
     appearance: none;
   }
-  /* iOS renders the value in this pseudo-element rather than in the element
-     itself, so text-align above does not reach it — this is the rule that
-     actually centres the date on the phone.
+  /* Blink draws a calendar glyph inside the field and then centres the value in
+     whatever room is left, so "centred" came out 10px to the left of the field's
+     true centre on Android. WebKit draws no glyph at all, so the same markup was
+     two visibly different fields on the two phones.
 
-     The margin iOS gives this element does two jobs at once: it centres the
-     value horizontally *and* vertically. Zeroing it is what lets text-align
-     above take the horizontal one, but it takes the vertical with it, and the
-     value drops to the top of the content box — a 16px line sitting in 42px of
-     field, riding about 10px high.
+     Removing it settles that in the direction of the plainer of the two: one
+     value, centred, nothing else in the box. Measured in Blink, the date moves
+     from 10px left of centre to dead centre. The control is unharmed — it still
+     focuses, it is still type="date", and tapping it still opens the native
+     wheel on a phone. Only the desktop's click-the-icon affordance goes with it,
+     and a desktop has the prev/next links and a typeable field. */
+  #picker::-webkit-calendar-picker-indicator { display: none; }
 
-     line-height is the vertical half, put back explicitly. Sized to the content
-     box (the 44px tap target less its two 1px borders) so the single line's box
-     fills the field and the glyphs centre inside it. It tracks var(--tap)
-     rather than hardcoding 42px, so the two cannot drift apart. */
+  /* WebKit puts the value in a pseudo-element of its own, which neither
+     text-align nor line-height on the element above is guaranteed to reach — so
+     both are restated here rather than left to inheritance.
+
+     The margin WebKit gives this element centres the value on both axes at once.
+     Zeroing it is what lets text-align take the horizontal job, but it took the
+     vertical with it and dropped the value to the top of the content box: a 16px
+     line in 42px of field, riding about 10px high. line-height puts that back. */
   #picker::-webkit-date-and-time-value {
     text-align: center;
     margin: 0;
