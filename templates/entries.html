@@ -143,6 +143,27 @@
     border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
     background: rgba(0, 0, 0, .25); color: var(--ink);
     font-variant-numeric: tabular-nums;
+    /* The actual fix for the right edge running past every other field on iOS.
+       box-sizing and max-width above were the first attempt and they are not
+       enough: while the control keeps its native appearance, iOS Safari sizes it
+       from its own shadow content rather than from the width it is given, and
+       lays that content out past the border box. Nothing declared on the element
+       clamps it, because the overflow happens inside the control.
+
+       Turning the appearance off makes it an ordinary box that honours width,
+       and the field still opens the native date wheel on tap — appearance
+       governs how a control is painted, not what it does. min-height is what
+       keeps it 44px once the native metrics stop applying. */
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  /* iOS renders the value in this pseudo-element, gives it a margin of its own
+     and centres it — which is why the date sat mid-field on the phone and hard
+     left on the desktop. Zeroed and set left so the picker reads the same as the
+     search box under it on both. */
+  #picker::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
   }
 
   /* ---- Progress -------------------------------------------------------- */
