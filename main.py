@@ -9,12 +9,18 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 from starlette.middleware.sessions import SessionMiddleware
 
 # Importing db also loads .env and fails a missing or malformed MONGO_URI at
 # startup rather than on the first query.
 from db import db
 from ist import IST, today_ist
+
+# The onboarding form is one CSV row by another name — same field names, same
+# rules — so it validates through the same function the seed script does rather
+# than growing a second, drifting copy of "what is a valid student".
+from seed_students import validate
 
 SESSION_SECRET = os.environ.get("SESSION_SECRET")
 if not SESSION_SECRET:
@@ -187,6 +193,149 @@ def dashboard(
             "today": datetime.now(IST).strftime("%a %d %b"),
         },
     )
+
+
+def student_form(
+    request: Request,
+    user: dict[str, Any],
+    *,
+    form: dict[str, str] | None = None,
+    problems: list[str] | None = None,
+    added: dict[str, Any] | None = None,
+    status_code: int = 200,
+) -> Response:
+    """The onboarding page in each of its three states: blank, rejected, just saved.
+
+    `form` is what she typed, echoed back so a rejected save never costs her the
+    other six fields.
+    """
+    return templates.TemplateResponse(
+        request,
+        "students_new.html",
+        {
+            "user": user,
+            # Both the date field's default and its max — §4.2 blocks the future
+            # everywhere else in the app, and an enrollment date is no different.
+            "today": today_ist(),
+            # Suggestions for the two datalists, not constraints. §3.2 is explicit
+            # that slot is free text and never an enum, and class follows it: the
+            # roster may hold a value nobody has typed yet.
+            #
+            # Sorted by length first, so numeric classes run 6, 7, 8, 9, 10 rather
+            # than the 10, 11, 12, 6 a plain string sort gives.
+            "classes": sorted(db.students.distinct("class"), key=lambda c: (len(c), c)),
+            "slots": sorted(db.students.distinct("slot")),
+            "form": form or {},
+            "problems": problems or [],
+            "added": added,
+        },
+        status_code=status_code,
+    )
+
+
+@app.get("/students/new")
+def new_student(
+    request: Request, user: Annotated[dict[str, Any], Depends(current_user)]
+) -> Response:
+    # Popped, not read: the success modal belongs to the one page load that
+    # followed the save. A refresh afterwards is an ordinary blank form.
+    return student_form(request, user, added=request.session.pop("added", None))
+
+
+@app.post("/students/new")
+def create_student(
+    request: Request,
+    user: Annotated[dict[str, Any], Depends(current_user)],
+    # str, not int. An int here would hand a typo to FastAPI, which answers with a
+    # 422 of JSON — a dead end on a phone. Taken as text, a bad roll number comes
+    # back as a sentence on the form she is already looking at.
+    roll_no: Annotated[str, Form()],
+    name: Annotated[str, Form()],
+    # `class` is a Python keyword, so the parameter cannot carry the field's own
+    # name. The alias is what keeps the form field named for the thing it stores.
+    student_class: Annotated[str, Form(alias="class")],
+    slot: Annotated[str, Form()],
+    enrollment_date: Annotated[str, Form()],
+    parent_phone: Annotated[str, Form()] = "",
+    notes: Annotated[str, Form()] = "",
+) -> Response:
+    row = {
+        "roll_no": roll_no.strip(),
+        "name": name.strip(),
+        "class": student_class.strip(),
+        "slot": slot.strip(),
+        "enrollment_date": enrollment_date.strip(),
+        # §5.5 — the student is this teacher's. Not a form field, so it cannot be
+        # anything else; validate() wants the key, and it is hers by construction.
+        "teacher": user["username"],
+    }
+
+    # validate() reports against CSV line numbers, which mean nothing on a form.
+    problems = [problem.split(": ", 1)[1] for problem in validate([row])]
+    # The one rule the seed script has no reason to hold: a CSV of past enrollments
+    # is ordinary, a teacher enrolling someone next Tuesday is not. Both sides are
+    # canonical ISO by now — validate() proved the shape — so string order is date
+    # order, and a malformed date has already been caught above rather than
+    # tripping this a second time.
+    if row["enrollment_date"] > today_ist():
+        problems.append("Enrollment date cannot be in the future.")
+
+    if problems:
+        return student_form(request, user, form=row, problems=problems, status_code=400)
+
+    now = datetime.now(IST)
+    # The same document seed_students.py writes, field for field, so a student
+    # added here and a student seeded from the CSV are the same kind of thing.
+    student = {
+        # int, exactly as the seed stores it. validate() has already proved this
+        # parses, and .sort("roll_no") needs it to put 2 before 10.
+        "roll_no": int(row["roll_no"]),
+        "name": row["name"],
+        "teacher_id": user["_id"],
+        "class": row["class"],
+        "slot": row["slot"],
+        "enrollment_date": row["enrollment_date"],
+        # None, never "". §3.2 has these as optional fields, and an empty string is
+        # a value that claims a phone number was recorded.
+        "parent_phone": parent_phone.strip() or None,
+        "notes": notes.strip() or None,
+        "is_active": True,
+        # §3.2 — nullable from the first write. is_active alone cannot answer "was
+        # this student enrolled on 15 July?"
+        "deactivated_at": None,
+        "onboarded_by": user["_id"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    try:
+        db.students.insert_one(student)
+    except DuplicateKeyError:
+        # The unique index on roll_no is the authority, so this asks it rather than
+        # checking first and hoping nothing lands in between. Naming who holds the
+        # number is what makes the message actionable — the query runs only here.
+        taken = db.students.find_one({"roll_no": student["roll_no"]})
+        held_by = f" already belongs to {taken['name']}" if taken else " is already in use"
+        return student_form(
+            request,
+            user,
+            form=row,
+            problems=[f"Roll number {row['roll_no']}{held_by}."],
+            status_code=400,
+        )
+
+    # Post/Redirect/Get. Rendering the modal straight from this POST would make a
+    # refresh offer to add the student a second time. Through the session rather
+    # than the query string, so a child's name never enters a URL or the browser's
+    # history — the same care .gitignore takes with students.csv.
+    request.session["added"] = {
+        "name": student["name"],
+        "roll_no": student["roll_no"],
+        "class": student["class"],
+        # Formatted here rather than in the template: the same "%d %b" the
+        # dashboard and the date bar use, so every date in the app reads alike.
+        "enrollment_date": datetime.strptime(row["enrollment_date"], "%Y-%m-%d").strftime("%d %b"),
+    }
+    return RedirectResponse("/students/new", status_code=303)
 
 
 @app.get("/entries")

@@ -149,7 +149,11 @@
     .logout:hover { color: var(--ink); }
   }
   a.tile:active { transform: scale(.985); }
-  a.tile .ti-checkbox {
+  /* Every live tile's leading glyph, not one named icon. This was scoped to
+     .ti-checkbox while "Today's entries" was the only tile that worked, so the
+     second one to come alive rendered its chip shape with no fill and no green
+     in it — a lit tile wearing the unlit tile's icon. */
+  a.tile .ti:first-child {
     color: var(--green);
     background: var(--green-tint);
     box-shadow: inset 0 0 0 1px rgba(55, 133, 78, .30);
@@ -259,13 +263,14 @@
     </span>
     <i class="ti ti-chevron-right" aria-hidden="true"></i>
   </a>
-  <div class="tile soon">
+  <a class="tile" href="/students/new">
     <i class="ti ti-user-plus" aria-hidden="true"></i>
     <span class="tile-text">
       <span class="tile-title">Onboard a new student</span>
+      <span class="tile-sub">Name, roll number, slot</span>
     </span>
-    <span class="soon-chip">Soon</span>
-  </div>
+    <i class="ti ti-chevron-right" aria-hidden="true"></i>
+  </a>
   <div class="tile soon">
     <i class="ti ti-chart-bar" aria-hidden="true"></i>
     <span class="tile-text">

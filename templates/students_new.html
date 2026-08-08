@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboard a student</title>
+{# Archivo for the heading. No icons: this page draws its one mark inline, the
+   way the entries page draws its magnifier and its pencil, rather than pulling
+   211KB of Tabler back in for a single 24px glyph. #}
+{% set heading_font = true %}
+{% include "_style.html" %}
+<style>
+  /* The dashboard's column. This page is reached from it and returns to it, so
+     the two share a width and the logo does not move between them. */
+  body { max-width: 30rem; margin: 0 auto; }
+
+  /* ---- Header ------------------------------------------------------------ */
+  /* The dashboard's geometry exactly: logo in row 1 with a link opposite it on
+     the same centre line, then the heading and its note spanning both columns
+     below, all starting on the logo's left edge. The hairline is the header's
+     own bottom border, fading at both ends — a drawn line rather than a rule
+     across the screen. */
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 1rem;
+    padding-bottom: 1.15rem;
+    margin: 0 0 1.4rem;
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg,
+                    transparent, var(--line) 14%, var(--line) 86%, transparent) 1;
+  }
+  .logo { grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto; }
+
+  /* The same treatment the dashboard's logout link wears, in the same slot. The
+     negative margin puts the 44px tap area flush with the page edge so its
+     padding does not read as an indent. */
+  .back {
+    grid-row: 1; grid-column: 2; justify-self: end;
+    display: inline-flex; align-items: center; min-height: var(--tap);
+    padding: 0 .7rem; margin-right: -.7rem;
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft); text-decoration: none;
+    font-size: .9rem; font-weight: 600;
+    transition: color .14s ease, background-color .14s ease;
+  }
+  .back:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
+
+  /* Fluid where the dashboard's is flat, because "Onboard a student" is three
+     words where "Dashboard" is one: at a fixed 34px it wraps on a 320px phone.
+     The ceiling is the dashboard's own size, so on any normal screen the two
+     headings are the same heading. */
+  h1 {
+    grid-row: 2; grid-column: 1 / -1;
+    margin: .9rem 0 0;
+    font-family: var(--font-heading);
+    font-size: clamp(1.75rem, 8vw, 2.125rem);
+    font-weight: 700; letter-spacing: -.03em; line-height: 1.1;
+  }
+  .note {
+    grid-row: 3; grid-column: 1 / -1;
+    margin: .45rem 0 0;
+    font-size: .8125rem; line-height: 1.45; color: var(--ink-faint);
+  }
+
+  /* ---- Form -------------------------------------------------------------- */
+  /* Three groups on the login page's rhythm — 24px between groups, 12px inside
+     one. The grouping is spacing alone: who the student is, when they attend,
+     and what is optional. Titling three obvious groups would be three more
+     lines of text on a form that is already seven fields long. */
+  form { display: grid; gap: 1.5rem; }
+  .group { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem .6rem; }
+  .wide { grid-column: 1 / -1; }
+
+  /* Visible, above the field, never a placeholder standing in for one — the
+     login page already records why: a placeholder stops being a name the moment
+     there is a value in the box, which on a seven-field form is exactly when you
+     are checking what you typed. Set in the small caps the entries page uses for
+     its "Test Score" prefix, so the role reads the same in both places. */
+  label {
+    display: block; margin: 0 0 .35rem;
+    font-size: .64rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--ink-faint);
+  }
+  .optional { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+  /* Lifted onto the page, not sunk into it. On the entries screen a topic box is
+     recessed below the card it sits on; here there is no card, and recessing a
+     field into a field this dark leaves a hole rather than a control. Same
+     reasoning, and the same treatment, as the login page's password field. */
+  .field {
+    width: 100%; min-width: 0; min-height: var(--tap);
+    padding: 0 .8rem;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    box-shadow: var(--edge), var(--lift);
+    transition: border-color var(--dur) ease, box-shadow var(--dur) ease;
+  }
+  .field::placeholder { color: var(--ink-faint); }
+  .field:focus {
+    outline: none; border-color: var(--focus); box-shadow: var(--focus-ring);
+  }
+
+  /* The one field that needs its own paragraph. A native date control keeps its
+     own metrics unless told otherwise: iOS Safari sizes it from its shadow
+     content rather than from the width it is given and lays that content out
+     past the border box, and the two engines then disagree about the height by
+     2px. appearance:none makes it an ordinary box that honours both — it still
+     opens the native wheel on a tap, because appearance governs how a control is
+     painted, not what it does. Learned the hard way on the entries page. */
+  textarea.field { min-height: 5.5rem; padding: .7rem .8rem; line-height: 1.5; resize: vertical; }
+  input[type="date"].field {
+    box-sizing: border-box;
+    height: var(--tap);
+    line-height: calc(var(--tap) - 2px);
+    font-variant-numeric: tabular-nums;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  /* WebKit draws the value in a pseudo-element of its own with a margin that
+     centres it. The margin is what overflows the box; line-height is what puts
+     the vertical centring back once it is gone. */
+  input[type="date"].field::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+    line-height: calc(var(--tap) - 2px);
+  }
+
+  /* ---- Submit ------------------------------------------------------------ */
+  /* The app's primary action, in the app's primary-action language: the same
+     white key the login page signs in with. position/overflow are for the
+     pending sweep below. */
+  #add {
+    position: relative; overflow: hidden;
+    width: 100%; min-height: 3rem;
+    background: linear-gradient(180deg, #ffffff, var(--ink)); color: var(--paper);
+    border: 1px solid var(--ink); border-radius: var(--radius-sm);
+    font-size: 1rem; font-weight: 600; letter-spacing: -.005em; cursor: pointer;
+    box-shadow: var(--lift), inset 0 1px 0 rgba(255, 255, 255, .55);
+    transition: transform .1s ease, opacity .14s ease;
+  }
+  #add:active { transform: scale(.985); opacity: .9; }
+
+  /* Adding a student is a full-page POST, and on a cold free instance it can sit
+     for a second with the tap already forgotten. The sweep is the only thing on
+     this page that loops, and it only ever runs while the browser is already
+     navigating away. */
+  #add::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(100deg,
+                  transparent 32%, rgba(16, 15, 14, .16) 50%, transparent 68%);
+    opacity: 0;
+  }
+  .sending #add { pointer-events: none; }
+  .sending #add::after { opacity: 1; animation: sweep 1.05s linear infinite; }
+  @keyframes sweep {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+  }
+
+  /* ---- Rejected ---------------------------------------------------------- */
+  /* Amber, the same as a failed save on the entries page and a wrong password on
+     the login page. A form she can fix is not a student marked absent, and the
+     two must not wear the same red. */
+  .problems {
+    margin: 0; padding: .7rem .85rem;
+    background: var(--amber-tint); color: var(--amber);
+    border: 1px solid rgba(217, 164, 65, .35);
+    border-radius: var(--radius-sm); font-size: .92rem;
+    animation: flag-in .3s var(--ease) backwards;
+  }
+  .problems p { margin: 0; }
+  .problems p + p { margin-top: .35rem; }
+  @keyframes flag-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---- The success moment ------------------------------------------------ */
+  /* The dialog is the stage, not the card: full viewport, transparent, with the
+     card centred in it and the light and the confetti filling it behind. A modal
+     <dialog> renders in the top layer, which is why both of those live inside it
+     — anything appended to <body> would be painted behind the backdrop and never
+     seen. */
+  dialog {
+    width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+    padding: 0; border: 0; background: transparent; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* display:flex above would otherwise beat the browser's own rule that a dialog
+     without [open] is not rendered. */
+  dialog:not([open]) { display: none; }
+  /* Dark enough to put the form behind it out of play, light enough that the
+     flare below still reads as light in a room rather than as a lit rectangle
+     on a black wall. At .74 the lamp was invisible and the card was floating in
+     a void. */
+  dialog::backdrop { background: rgba(10, 9, 8, .66); }
+
+  /* Every screen in this app sits under a warm pool of light, and the login page
+     opens by turning one on. So this is what the academy gaining a student looks
+     like: that same lamp flaring and settling. The hues are the app's own — an
+     off-white core, its amber falloff, and beneath them the logo's scarlet, which
+     appears nowhere else but the mark itself and the login screen. */
+  .flare {
+    position: fixed; left: 50%; top: 50%;
+    width: min(40rem, 150vw); height: auto; aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    /* Roughly double the login lamp's alphas, because this one is read through a
+       scrim rather than against bare paper. Still low enough to stay a pool of
+       light: at peak it lifts the field behind the card by about one step of
+       grey, and the scarlet never resolves into a red shape. */
+    background:
+      radial-gradient(closest-side,
+        rgba(242, 239, 233, .16),
+        rgba(217, 164, 65, .11) 45%,
+        transparent 72%),
+      radial-gradient(closest-side,
+        rgba(237, 28, 36, .10),
+        transparent 68%);
+    pointer-events: none;
+    animation: flare 1.3s var(--ease) both;
+  }
+  /* Overshoots to full and settles back, which is what reads as a light coming
+     up rather than a shape fading in. `both` because this is the one element
+     whose resting state differs from its base style. */
+  @keyframes flare {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.72); }
+    45%  { opacity: 1; }
+    100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* The pieces fall through that light. pointer-events:none and no z-index of
+     their own, so they stay behind the card in the dialog's own order and both
+     buttons remain tappable through the whole thing. */
+  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .confetti span {
+    position: absolute; top: -8vh;
+    width: 7px; border-radius: 2px;
+    animation: fall linear forwards;
+  }
+  /* transform and opacity only — 28 of these are running at once on a phone. */
+  @keyframes fall {
+    0%   { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); }
+    100% { opacity: 0; transform: translate3d(var(--dx), 112vh, 0) rotate(var(--spin)); }
+  }
+
+  .added {
+    position: relative;
+    width: min(21rem, calc(100vw - 2.5rem));
+    padding: 1.7rem 1.4rem 1.1rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    /* The page's own two-layer lift, deepened: this one is held above everything
+       else on the screen rather than resting on it. */
+    box-shadow: var(--edge),
+                0 2px 4px rgba(0, 0, 0, .5),
+                0 24px 60px rgba(0, 0, 0, .55);
+    text-align: center;
+    animation: card-in .34s var(--ease) backwards;
+  }
+  /* The card holds focus so the dialog is announced whole, but it is not a
+     control and has nothing to indicate. The two links inside keep their rings. */
+  .added:focus { outline: none; }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(12px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* The same chip the dashboard sets its tile icons into, in the green that means
+     committed everywhere else in the app. The check is drawn, at the 2px round
+     stroke the magnifier and the pencil are drawn at. */
+  .check {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 3rem; height: 3rem; margin: 0 0 .9rem;
+    color: var(--green);
+    background: var(--green-tint);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px rgba(55, 133, 78, .30);
+  }
+
+  .added h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2;
+  }
+  /* What she just typed, read back at the one moment a typo is still cheap. */
+  .added-who {
+    margin: .55rem 0 0;
+    font-size: .95rem; color: var(--ink-soft); line-height: 1.45;
+  }
+  /* The enrollment date is what the attendance fraction will be counted from, so
+     it is the one fact worth restating rather than decorating. */
+  .added-from {
+    margin: .3rem 0 0;
+    font-size: .8125rem; color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .again {
+    display: flex; align-items: center; justify-content: center;
+    min-height: var(--tap); margin: 1.3rem 0 0;
+    background: linear-gradient(180deg, #ffffff, var(--ink)); color: var(--paper);
+    border: 1px solid var(--ink); border-radius: var(--radius-sm);
+    font-size: .95rem; font-weight: 600; text-decoration: none;
+    box-shadow: var(--lift), inset 0 1px 0 rgba(255, 255, 255, .55);
+    transition: transform .1s ease, opacity .14s ease;
+  }
+  .again:active { transform: scale(.985); opacity: .9; }
+  .done {
+    display: flex; align-items: center; justify-content: center;
+    min-height: var(--tap); margin-top: .2rem;
+    color: var(--ink-soft); text-decoration: none;
+    font-size: .9rem; font-weight: 600;
+    border-radius: var(--radius-sm);
+    transition: color .14s ease, background-color .14s ease;
+  }
+  .done:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
+
+  @media (hover: hover) {
+    .back:hover, .done:hover { color: var(--ink); }
+    .field:hover { border-color: var(--ink-faint); }
+    #add:hover, .again:hover { transform: translateY(-1px); }
+  }
+
+  /* The shared rule in _style.html crushes durations, which is the right answer
+     for a one-shot and a strobe for the sweep's infinite loop, and it leaves
+     delays alone. Off by name instead. The confetti is not listed because it is
+     never created under reduce-motion — see the script. */
+  @media (prefers-reduced-motion: reduce) {
+    .problems, .flare, .added, .sending #add::after { animation: none; }
+    .flare { opacity: .55; }
+  }
+</style>
+
+<header>
+  {# width/height are the intrinsic pixels, so the browser reserves the right box
+     before the file arrives and the heading below it never jumps. #}
+  <img class="logo" src="/static/logo.png" alt="HR Academy" width="1036" height="381">
+  <h1>Onboard a student</h1>
+  <p class="note">They join your list, and their attendance is counted from their
+    enrollment date.</p>
+  <a class="back" href="/dashboard">‹ Dashboard</a>
+</header>
+
+{# Before the form, not after it. If the script never runs, this is a plain block
+   of markup in the document — so it needs to be the first thing under the header
+   rather than something below seven fields nobody scrolled back past. #}
+{% if added %}
+<dialog id="added" aria-labelledby="added-title" open>
+  <div class="flare" aria-hidden="true"></div>
+  <div class="confetti" aria-hidden="true"></div>
+  {# tabindex is what makes the card focusable at all; the script is what puts
+     focus here rather than on "Add another". Focusing the card announces the
+     dialog from its title instead of from its primary button, and keeps a heavy
+     focus ring off a control nobody reached with a keyboard. Tab still walks the
+     two links, Esc still closes. #}
+  <div class="added" tabindex="-1">
+    <span class="check" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>
+    </span>
+    <h2 id="added-title">Welcome to HR Academy!</h2>
+    <p class="added-who">{{ added.name }} · Roll {{ added.roll_no }} · Class {{ added['class'] }}</p>
+    <p class="added-from">On your list from {{ added.enrollment_date }}</p>
+    {# Both are ordinary links, so the whole moment works with no script at all:
+       one reloads a blank form, the other goes home. The script upgrades the
+       first to simply closing the dialog, since the form behind it is already
+       blank after the redirect. #}
+    <a class="again" href="/students/new">Add another</a>
+    <a class="done" href="/dashboard">Done ›</a>
+  </div>
+</dialog>
+{% endif %}
+
+<form method="post" action="/students/new">
+  {% if problems %}
+    <div class="problems">
+      {% for problem in problems %}<p>{{ problem }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="group">
+    <div class="wide">
+      <label for="name">Name</label>
+      <input class="field" id="name" name="name" value="{{ form.name or '' }}"
+             autocomplete="off" required>
+    </div>
+    <div>
+      <label for="roll_no">Roll number</label>
+      <input class="field" id="roll_no" name="roll_no" type="number" inputmode="numeric"
+             min="1" step="1" value="{{ form.roll_no or '' }}" autocomplete="off" required>
+    </div>
+    <div>
+      <label for="class">Class</label>
+      {# A datalist suggests without constraining: she can pick 10 or type
+         something the roster has never held. §3.2 is explicit that these are
+         never enums. #}
+      <input class="field" id="class" name="class" list="classes"
+             value="{{ form['class'] or '' }}" autocomplete="off" required>
+      <datalist id="classes">
+        {% for value in classes %}<option value="{{ value }}">{% endfor %}
+      </datalist>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="wide">
+      <label for="slot">Slot</label>
+      <input class="field" id="slot" name="slot" list="slots" placeholder="e.g. 6 - 9"
+             value="{{ form.slot or '' }}" autocomplete="off" required>
+      <datalist id="slots">
+        {% for value in slots %}<option value="{{ value }}">{% endfor %}
+      </datalist>
+    </div>
+    <div class="wide">
+      <label for="enrollment_date">Enrollment date</label>
+      {# Defaults to today and cannot be set past it, the same rule the entries
+         page's own picker carries. #}
+      <input class="field" id="enrollment_date" name="enrollment_date" type="date"
+             value="{{ form.enrollment_date or today }}" max="{{ today }}" required>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="wide">
+      <label for="parent_phone">Parent phone <span class="optional">— optional</span></label>
+      <input class="field" id="parent_phone" name="parent_phone" type="tel"
+             value="{{ form.parent_phone or '' }}" autocomplete="off">
+    </div>
+    <div class="wide">
+      <label for="notes">Notes <span class="optional">— optional</span></label>
+      <textarea class="field" id="notes" name="notes" rows="3">{{ form.notes or '' }}</textarea>
+    </div>
+  </div>
+
+  <button id="add" type="submit">Add student</button>
+</form>
+
+<script>
+  // submit only fires once the browser's own validation has passed, so a missing
+  // required field never leaves the button stuck mid-sweep.
+  document.querySelector("form").addEventListener("submit", () => {
+    document.body.classList.add("sending");
+    document.getElementById("add").setAttribute("aria-busy", "true");
+  });
+  // Coming back with the back button restores this page from the bfcache exactly
+  // as it was left — mid-navigation, still sweeping at a request that resolved
+  // long ago.
+  addEventListener("pageshow", () => {
+    document.body.classList.remove("sending");
+    document.getElementById("add").removeAttribute("aria-busy");
+  });
+
+  const dialog = document.getElementById("added");
+  if (dialog) {
+    // Rendered with [open] so it is visible even if this script never runs, then
+    // upgraded here into a real modal — which is what buys the backdrop, the
+    // focus trap, Esc, and the page behind going inert. showModal() throws on an
+    // already-open dialog, hence the close() first.
+    dialog.close();
+    dialog.showModal();
+    // Explicitly, rather than by putting autofocus on the card: Chrome's dialog
+    // focusing steps walk past a tabindex="-1" div and land on the first link,
+    // which draws a heavy focus ring around "Add another" for someone who only
+    // tapped a button. Focus belongs on the card, so the dialog is read from its
+    // heading down.
+    dialog.querySelector(".added").focus();
+
+    // Escape and the backdrop both land here, and both should mean the same as
+    // "Add another": the form behind is already blank, so there is nothing to
+    // reload and no reason to leave the page.
+    dialog.querySelector(".again").addEventListener("click", (event) => {
+      event.preventDefault();
+      dialog.close();
+    });
+
+    // Not created at all under reduce-motion, rather than created and then held
+    // still — 28 elements nobody asked for is worse than none. The card and the
+    // light are handled in CSS, by name.
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const stage = dialog.querySelector(".confetti");
+      // The app's own four: present, attention, absent, and the logo's scarlet —
+      // whose only other outings are the mark itself and the login screen's lamp.
+      const hues = ["#37854e", "#d9a441", "#bd4a66", "#ed1c24"];
+      for (let i = 0; i < 28; i++) {
+        const piece = document.createElement("span");
+        piece.style.left = Math.random() * 100 + "%";
+        piece.style.height = 9 + Math.random() * 6 + "px";
+        piece.style.background = hues[i % hues.length];
+        piece.style.setProperty("--dx", Math.random() * 40 - 20 + "vw");
+        piece.style.setProperty("--spin", Math.random() * 720 - 360 + "deg");
+        piece.style.animationDuration = 1.1 + Math.random() * 0.7 + "s";
+        piece.style.animationDelay = Math.random() * 0.25 + "s";
+        stage.append(piece);
+      }
+      // A one-shot, never a loop: the whole thing is gone a moment after the last
+      // piece lands, so nothing is left running behind the card or when the tab
+      // is hidden.
+      setTimeout(() => stage.remove(), 2400);
+    }
+  }
+</script>
