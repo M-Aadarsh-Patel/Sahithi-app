@@ -186,10 +186,15 @@
   @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
   body { animation: page-in .2s ease-out; }
 
-  input, button, summary { font: inherit; color: inherit; }
+  /* textarea belongs here as much as input does. Left out, it keeps the UA
+     default — monospace at 13.3px — so the onboarding form's notes field was the
+     one control in the app in a different typeface, and the one under the 16px
+     floor the next rule exists to hold. It was invisible for as long as no page
+     had a textarea. */
+  input, textarea, button, summary { font: inherit; color: inherit; }
   /* Anything below 16px makes iOS Safari zoom the page on focus, which on this
      app means the row jumps away mid-typing. */
-  input { font-size: max(1rem, 16px); caret-color: var(--focus); }
+  input, textarea { font-size: max(1rem, 16px); caret-color: var(--focus); }
 
   ::selection { background: rgba(107, 163, 208, .3); color: var(--ink); }
 

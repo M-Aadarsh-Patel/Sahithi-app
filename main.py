@@ -22,6 +22,38 @@ from ist import IST, today_ist
 # than growing a second, drifting copy of "what is a valid student".
 from seed_students import validate
 
+# validate() writes for whoever is proofreading a CSV, in the CSV's own column
+# names. On the form those are not words anyone has seen: the label above the box
+# reads "Roll number", never "roll_no". Same check, said in the form's language.
+FIELD_LABELS = {
+    "roll_no": "Roll number",
+    "name": "Name",
+    "class": "Class",
+    "slot": "Slot",
+    "enrollment_date": "Enrollment date",
+}
+
+
+def readable(problem: str) -> tuple[str | None, str]:
+    """One validate() line as (field it is about, sentence to show her).
+
+    Only three of validate()'s shapes can reach a form: a blank required field, a
+    roll number that is not a number, and a date that is not a date. The rest —
+    duplicate rows, an unknown teacher, a ??? marker — need a CSV to happen. An
+    unrecognised shape is passed through rather than mangled into a guess.
+    """
+    field = problem.split(" ", 1)[0]
+    label = FIELD_LABELS.get(field)
+    if label is None:
+        return None, problem[:1].upper() + problem[1:]
+    if problem.endswith("is blank"):
+        return field, f"{label} is required."
+    if "is not a positive whole number" in problem:
+        return field, f"{label} must be a whole number, like 42."
+    if "is not a real" in problem:
+        return field, f"{label} is not a real date."
+    return field, f"{label}: {problem.split(' ', 1)[1]}"
+
 SESSION_SECRET = os.environ.get("SESSION_SECRET")
 if not SESSION_SECRET:
     raise RuntimeError("SESSION_SECRET is not set")
@@ -201,13 +233,16 @@ def student_form(
     *,
     form: dict[str, str] | None = None,
     problems: list[str] | None = None,
+    invalid: set[str] | None = None,
     added: dict[str, Any] | None = None,
     status_code: int = 200,
 ) -> Response:
     """The onboarding page in each of its three states: blank, rejected, just saved.
 
     `form` is what she typed, echoed back so a rejected save never costs her the
-    other six fields.
+    other six fields. `invalid` names the fields the problems are about, so the
+    banner is not the only thing pointing at them — reading five sentences and
+    then hunting seven boxes for the one they mean is the failure this avoids.
     """
     return templates.TemplateResponse(
         request,
@@ -227,6 +262,7 @@ def student_form(
             "slots": sorted(db.students.distinct("slot")),
             "form": form or {},
             "problems": problems or [],
+            "invalid": invalid or set(),
             "added": added,
         },
         status_code=status_code,
@@ -249,13 +285,20 @@ def create_student(
     # str, not int. An int here would hand a typo to FastAPI, which answers with a
     # 422 of JSON — a dead end on a phone. Taken as text, a bad roll number comes
     # back as a sentence on the form she is already looking at.
-    roll_no: Annotated[str, Form()],
-    name: Annotated[str, Form()],
+    #
+    # Every one of these defaults to "", including the five that are required, for
+    # the same reason. FastAPI reads an empty form value as *missing* (the gotcha
+    # submitted_fields() documents), so a required parameter with no default 422s
+    # on a blank box before this function runs — which would make validate()'s
+    # blank checks dead code and answer a cleared field with raw JSON. Defaulted,
+    # a blank arrives as "" and comes back as "Name is required." on the form.
+    roll_no: Annotated[str, Form()] = "",
+    name: Annotated[str, Form()] = "",
     # `class` is a Python keyword, so the parameter cannot carry the field's own
     # name. The alias is what keeps the form field named for the thing it stores.
-    student_class: Annotated[str, Form(alias="class")],
-    slot: Annotated[str, Form()],
-    enrollment_date: Annotated[str, Form()],
+    student_class: Annotated[str, Form(alias="class")] = "",
+    slot: Annotated[str, Form()] = "",
+    enrollment_date: Annotated[str, Form()] = "",
     parent_phone: Annotated[str, Form()] = "",
     notes: Annotated[str, Form()] = "",
 ) -> Response:
@@ -270,8 +313,15 @@ def create_student(
         "teacher": user["username"],
     }
 
-    # validate() reports against CSV line numbers, which mean nothing on a form.
-    problems = [problem.split(": ", 1)[1] for problem in validate([row])]
+    # validate() reports against CSV line numbers, which mean nothing on a form,
+    # so the prefix goes and readable() says the rest in the form's own words.
+    problems: list[str] = []
+    invalid: set[str] = set()
+    for raw in validate([row]):
+        field, sentence = readable(raw.split(": ", 1)[1])
+        problems.append(sentence)
+        if field:
+            invalid.add(field)
     # The one rule the seed script has no reason to hold: a CSV of past enrollments
     # is ordinary, a teacher enrolling someone next Tuesday is not. Both sides are
     # canonical ISO by now — validate() proved the shape — so string order is date
@@ -279,9 +329,12 @@ def create_student(
     # tripping this a second time.
     if row["enrollment_date"] > today_ist():
         problems.append("Enrollment date cannot be in the future.")
+        invalid.add("enrollment_date")
 
     if problems:
-        return student_form(request, user, form=row, problems=problems, status_code=400)
+        return student_form(
+            request, user, form=row, problems=problems, invalid=invalid, status_code=400
+        )
 
     now = datetime.now(IST)
     # The same document seed_students.py writes, field for field, so a student
@@ -320,6 +373,7 @@ def create_student(
             user,
             form=row,
             problems=[f"Roll number {row['roll_no']}{held_by}."],
+            invalid={"roll_no"},
             status_code=400,
         )
 

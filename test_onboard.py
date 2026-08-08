@@ -113,6 +113,10 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     check("names who holds it", "ZZ Test Student" in body)
     check("still exactly one document", db.students.count_documents({"roll_no": int(ROLL)}) == 1)
     check("the impostor was not written", db.students.count_documents({"name": "ZZ Impostor"}) == 0)
+    # The banner alone leaves her hunting seven boxes for the one it means.
+    check("the roll number field is marked", 'name="roll_no"' in body
+          and 'aria-invalid="true"' in body.split('name="roll_no"')[1].split(">")[0])
+    check("what she typed is still there", 'value="ZZ Impostor"' in body)
 
     print("\n5. a future enrollment date is refused")
     status, _, body = post(form(roll_no="99002", enrollment_date=FUTURE))
@@ -121,9 +125,20 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     check("nothing written", db.students.count_documents({"roll_no": 99002}) == 0)
 
     print("\n6. a roll number that is not a number is refused")
-    status, _, _ = post(form(roll_no="R014"))
+    status, _, body = post(form(roll_no="R014"))
     check("rejected rather than 422", status == 400, f"status={status}")
     check("nothing written", db.students.count_documents({"name": "ZZ Test Student"}) == 1)
+    # validate() writes for a CSV proofreader, in the CSV's column names. The
+    # label above the box on this form reads "Roll number" and never "roll_no".
+    check("said in the form's own words", "Roll number must be a whole number" in body,
+          "roll_no" if "roll_no is" in body or "roll_no '" in body else "")
+    check("no raw field names leak through", "roll_no '" not in body)
+
+    print("\n6b. a blank required field names the field, not the column")
+    status, _, body = post(form(name="", roll_no="99003"))
+    check("rejected", status == 400, f"status={status}")
+    check("reads 'Name is required.'", "Name is required." in body)
+    check("nothing written", db.students.count_documents({"roll_no": 99003}) == 0)
 
 
 def main() -> None:
@@ -137,10 +152,10 @@ def main() -> None:
     finally:
         server.terminate()
         server.wait(timeout=10)
-        removed = db.students.delete_many({"roll_no": {"$in": [99001, 99002]}}).deleted_count
+        removed = db.students.delete_many({"roll_no": {"$in": [99001, 99002, 99003]}}).deleted_count
         print("\n7. cleanup")
         check("throwaway students deleted",
-              db.students.count_documents({"roll_no": {"$in": [99001, 99002]}}) == 0,
+              db.students.count_documents({"roll_no": {"$in": [99001, 99002, 99003]}}) == 0,
               f"removed {removed}")
 
     print("\nALL PASS" if ok else "\nFAILURES ABOVE")

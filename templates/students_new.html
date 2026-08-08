@@ -171,9 +171,29 @@
   }
   .problems p { margin: 0; }
   .problems p + p { margin-top: .35rem; }
+  /* It is focused on load, so it needs no ring of its own — it is a message,
+     not a control, and the fields it names carry the mark instead. */
+  .problems:focus { outline: none; }
   @keyframes flag-in {
     from { opacity: 0; transform: translateY(-8px); }
     to   { opacity: 1; transform: none; }
+  }
+
+  /* The banner says what is wrong; this says where. Without it five sentences at
+     the top of the page send her hunting through seven boxes for the ones they
+     are about. Amber, the same as the banner, so the two read as one statement.
+     Driven by aria-invalid rather than a class, so the attribute that tells a
+     screen reader is the same one that draws it. */
+  .field[aria-invalid="true"] {
+    border-color: var(--amber);
+    background: var(--amber-tint);
+  }
+  /* Touching the field is the answer to the prompt, so the prompt stops — the
+     same reasoning the login page's password field uses on a wrong password.
+     Back to the ordinary field surface, not a third colour. */
+  .field[aria-invalid="true"]:focus {
+    border-color: var(--focus);
+    background: var(--card);
   }
 
   /* ---- The success moment ------------------------------------------------ */
@@ -182,8 +202,15 @@
      <dialog> renders in the top layer, which is why both of those live inside it
      — anything appended to <body> would be painted behind the backdrop and never
      seen. */
+  /* position:fixed with inset:0 rather than width/height 100%. A dialog's default
+     absolute positioning resolves its percentages against the initial containing
+     block, which on iOS is the *large* viewport — the one that assumes the URL
+     bar is hidden — so a 100%-tall dialog is taller than the screen it is on and
+     the card centres slightly low. Fixed inset:0 is the visible viewport on both
+     engines, which is the box this is meant to fill. */
   dialog {
-    width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+    position: fixed; inset: 0;
+    max-width: none; max-height: none;
     padding: 0; border: 0; background: transparent; overflow: hidden;
     display: flex; align-items: center; justify-content: center;
   }
@@ -193,8 +220,15 @@
   /* Dark enough to put the form behind it out of play, light enough that the
      flare below still reads as light in a room rather than as a lit rectangle
      on a black wall. At .74 the lamp was invisible and the card was floating in
-     a void. */
-  dialog::backdrop { background: rgba(10, 9, 8, .66); }
+     a void.
+
+     Beat one: the room dims. Fast, and first — everything else arrives into a
+     stage that is already set rather than racing it. */
+  dialog::backdrop {
+    background: rgba(10, 9, 8, .66);
+    animation: scrim .22s ease-out both;
+  }
+  @keyframes scrim { from { opacity: 0; } to { opacity: 1; } }
 
   /* Every screen in this app sits under a warm pool of light, and the login page
      opens by turning one on. So this is what the academy gaining a student looks
@@ -232,21 +266,74 @@
   /* The pieces fall through that light. pointer-events:none and no z-index of
      their own, so they stay behind the card in the dialog's own order and both
      buttons remain tappable through the whole thing. */
+  /* A popper going off, not a rain: every piece leaves one point — the mark that
+     just landed — flies out on its own heading, and gravity takes it from there.
+     overflow:hidden is what crops the ones that make it off screen. */
   .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+
+  /* Two elements per piece, because a parabola is two motions. The wrapper is the
+     throw: out and up, decelerating, which is the powder. The flake inside is the
+     fall: straight down, accelerating, which is gravity. Neither curve can draw an
+     arc alone; multiplied, they do, and both are plain transforms so the whole
+     shower stays on the compositor.
+
+     Left/top come from the check's own box, measured once — so the burst starts
+     at the tick wherever the card's height has put it. */
   .confetti span {
-    position: absolute; top: -8vh;
-    width: 7px; border-radius: 2px;
-    animation: fall linear forwards;
+    position: absolute; left: var(--ox); top: var(--oy);
+    animation: throw var(--dur) cubic-bezier(.11, .68, .35, 1) var(--d);
   }
-  /* transform and opacity only — 28 of these are running at once on a phone. */
-  @keyframes fall {
-    0%   { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); }
-    100% { opacity: 0; transform: translate3d(var(--dx), 112vh, 0) rotate(var(--spin)); }
+  @keyframes throw {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(var(--x), var(--y)); }
+  }
+  /* opacity:0 is the resting state, and neither animation carries a fill mode.
+     That is the whole of it: before the delay and after the flight the piece
+     falls back to this rule and is not there.
+
+     Both halves matter, and getting either wrong puts a ball of stacked confetti
+     on the screen. `backwards` showed the 0% keyframe — every piece opaque and
+     piled on the origin — for the whole delay, which is the clump that sat on the
+     form before the modal arrived. And with no `forwards`, the end of the flight
+     dropped each piece straight back to a base style that was also opaque and
+     also at the origin, which is the clump that reappeared afterwards. Resting
+     invisible answers both at once. */
+  /* The flake itself is a plain block — the reference's are 6 sizes of rectangle
+     from a 4×22 splinter to a 13×13 square, and the angle each one wears is fixed
+     for its whole flight rather than tumbling. Size, colour and angle are set per
+     piece. */
+  .confetti i {
+    display: block;
+    opacity: 0;
+    border-radius: 1px;
+    animation: gravity var(--dur) cubic-bezier(.42, 0, .85, .62) var(--d);
+  }
+  @keyframes gravity {
+    0%   { opacity: 1; transform: translateY(0) rotate(var(--r)); }
+    72%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(var(--fall)) rotate(var(--r)); }
+  }
+
+  /* The streamers — the curled paper ribbons, and the part of the reference that
+     is not confetti at all. Two adjacent borders on a round box draw a half-curl;
+     the per-piece rotation then points it anywhere. Cheaper and steadier than an
+     svg path per ribbon, and at 4px on a phone it reads the same. */
+  .confetti i.ribbon {
+    background: none;
+    border-style: solid;
+    border-width: var(--w);
+    border-color: currentColor currentColor transparent transparent;
+    border-radius: 50%;
   }
 
   .added {
     position: relative;
     width: min(21rem, calc(100vw - 2.5rem));
+    /* A landscape phone is 375px tall. The card never gets near that, but a
+       larger text size or a long name can push it, and a modal that overflows
+       the viewport with no way to reach its buttons is not a thing to leave to
+       chance. dvh, not vh: on iOS vh is the URL-bar-hidden height. */
+    max-height: calc(100dvh - 2rem); overflow-y: auto;
     padding: 1.7rem 1.4rem 1.1rem;
     background: var(--card);
     border: 1px solid var(--line);
@@ -257,37 +344,211 @@
                 0 2px 4px rgba(0, 0, 0, .5),
                 0 24px 60px rgba(0, 0, 0, .55);
     text-align: center;
-    animation: card-in .34s var(--ease) backwards;
+    /* Beat two, 60ms behind the scrim. Further and smaller than it was — 18px
+       and .94 rather than 12px and .97 — because this is the one authored
+       entrance in the app and it was reading as a nudge rather than an arrival.
+       transform and opacity only: this runs on a phone, and everything above it
+       in this rule is expensive to animate. */
+    animation: card-in .42s var(--ease) .06s backwards;
   }
   /* The card holds focus so the dialog is announced whole, but it is not a
      control and has nothing to indicate. The two links inside keep their rings. */
   .added:focus { outline: none; }
   @keyframes card-in {
-    from { opacity: 0; transform: translateY(12px) scale(.97); }
+    from { opacity: 0; transform: translateY(18px) scale(.94); }
     to   { opacity: 1; transform: none; }
   }
 
-  /* The same chip the dashboard sets its tile icons into, in the green that means
-     committed everywhere else in the app. The check is drawn, at the 2px round
-     stroke the magnifier and the pencil are drawn at. */
-  .check {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 3rem; height: 3rem; margin: 0 0 .9rem;
-    color: var(--green);
-    background: var(--green-tint);
-    border-radius: 999px;
-    box-shadow: inset 0 0 0 1px rgba(55, 133, 78, .30);
+  /* Beat four: the words, each one its own line arriving just behind the last.
+     40ms apart, which is close enough that the three read as one movement
+     settling rather than as three separate animations.
+
+     The two links are in the sequence but never wait on it — opacity does not
+     stop a tap, so "Add another" is hittable from the first frame it exists. */
+  @keyframes line-in {
+    from { opacity: 0; transform: translateY(9px); }
+    to   { opacity: 1; transform: none; }
   }
+  .added h2   { animation: line-in .34s var(--ease) .34s backwards; }
+  .added-who  { animation: line-in .34s var(--ease) .40s backwards; }
+  .added-meta { animation: line-in .34s var(--ease) .45s backwards; }
+  .added-from { animation: line-in .34s var(--ease) .50s backwards; }
+  .again      { animation: line-in .34s var(--ease) .54s backwards; }
+  .done       { animation: line-in .34s var(--ease) .58s backwards; }
+
+  /* Beat three, and the shape of it comes from the reference: nothing is on
+     screen, then a disc grows out of nothing, a mark lands on it, and the impact
+     throws sparks. The chip is no longer a container the mark sits in — the disc
+     *is* the chip, and it arrives as part of the animation. So this element holds
+     no background and no ring of its own; it is a 48px hole the svg draws into. */
+  .check {
+    position: relative;
+    display: block;
+    width: 3rem; height: 3rem; margin: 0 auto .9rem;
+  }
+
+  /* Bigger than the chip and centred on it, so a spark can leave the disc and
+     finish out on the card. The disc itself renders at exactly 3rem: r24 of an
+     84-unit box drawn at 84px. */
+  .mark {
+    position: absolute; left: 50%; top: 50%;
+    width: 5.25rem; height: 5.25rem;
+    transform: translate(-50%, -50%);
+    overflow: visible;
+  }
+
+  /* Every scale in here turns about the middle of the viewBox. SVG children
+     default to transform-box: view-box, so this is 42,42 in the box's own units
+     and needs no fill-box — which is the version Safari was late to. */
+  .disc, .disc-warm, .tick { transform-origin: 42px 42px; }
+
+  /* The warm one blooms first and dies: a flash of light at the moment of
+     arrival, standing in for the reference's pale cream disc in the hue this app
+     already uses for warmth. It overshoots the green edge, which is what makes
+     the green look like it is growing *into* something rather than onto nothing.
+     Rests invisible, so nothing of it survives the animation. */
+  .disc-warm {
+    fill: var(--amber);
+    opacity: 0;
+    animation: bloom .54s var(--ease) .46s;
+  }
+  @keyframes bloom {
+    from { opacity: .45; transform: scale(0); }
+    to   { opacity: 0;   transform: scale(1.18); }
+  }
+
+  /* Then the disc itself — the tinted chip this page has always had, with the
+     same hairline ring, arriving by growing instead of being there from the
+     start. The reference fills its disc solid and puts a white mark on it; this
+     keeps our own quieter pairing and takes only the motion. Its resting state is
+     full size, so the animation supplies just the `from`, and switching motion
+     off leaves the ordinary chip. */
+  .disc {
+    fill: var(--green-tint);
+    stroke: rgba(55, 133, 78, .30);
+    stroke-width: 1;
+    animation: disc-in .6s var(--ease) .58s backwards;
+  }
+  @keyframes disc-in {
+    0%   { transform: scale(0); }
+    70%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+
+  /* The mark lands rather than being written. The reference scales it up from
+     nothing over its last third, and that is the beat the sparks are thrown on —
+     a drawn stroke has no single moment of impact to throw them from. The stroke
+     itself is ours: --green at the weight the magnifier and the pencil are drawn
+     at, not the reference's heavy white. Rests at full size like the disc. */
+  .tick {
+    animation: tick-in .45s var(--ease) .95s backwards;
+  }
+  @keyframes tick-in {
+    0%   { transform: scale(0); }
+    65%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+
+  /* The burst. Ten particles leave the mark as it finishes, each on its own
+     heading, each fading as it travels — the mark completing hard enough to
+     throw something off.
+
+     No fill mode in either direction, which is the whole trick: the resting
+     style is opacity 0, so before the delay they are not there and after the run
+     they are gone. A `backwards` fill would have parked all ten on top of each
+     other in the middle of the chip from the moment the page loaded.
+
+     translate only, no scale, so there is no transform-box or transform-origin
+     to get wrong on an SVG child — the one property that behaves identically in
+     both engines. */
+  .burst circle {
+    opacity: 0;
+    animation: particle .58s var(--ease) var(--d);
+  }
+  /* Born at dead centre and released outward. They need no starting offset to
+     stay off the mark, because the burst group is painted *before* the disc and
+     therefore behind it — a particle's first frames happen underneath solid
+     green and it emerges at the rim, which is the trick the reference uses and
+     the reason its dots read as thrown rather than as spawned. */
+  @keyframes particle {
+    from { opacity: 1; transform: translate(0, 0); }
+    to   { opacity: 0; transform: translate(var(--tx), var(--ty)); }
+  }
+
+  /* The sparks. These are the half of the reference I had missed: short
+     round-capped strokes shooting out alongside the dots, and the thing that
+     makes the burst read as an impact rather than as falling confetti.
+
+     Each line is already drawn along its own heading in the markup, so the
+     animation only ever translates — no per-spark rotation, and so no
+     transform-origin to get wrong on an SVG child.
+
+     dashoffset is what gives it the comet: pathLength="1" normalises the
+     segment, so 1 → 0 → -1 runs the visible stroke on from the near end and off
+     the far one while it travels. It grows out of nothing and is gone. */
+  .burst line {
+    opacity: 0;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    animation: spark .5s var(--ease) var(--d);
+  }
+  @keyframes spark {
+    0%   { opacity: 0; stroke-dashoffset:  1; transform: translate(0, 0); }
+    30%  { opacity: 1; }
+    55%  { stroke-dashoffset:  0; }
+    100% { opacity: 0; stroke-dashoffset: -1;
+           transform: translate(var(--tx), var(--ty)); }
+  }
+  .burst line:nth-of-type(1) { --tx:   0px; --ty: -15px; --d: 1.02s; stroke: var(--green); }
+  .burst line:nth-of-type(2) { --tx:  15px; --ty:   0px; --d: 1.08s; stroke: #ed1c24; }
+  .burst line:nth-of-type(3) { --tx: -11px; --ty:  11px; --d: 1.05s; stroke: var(--amber); }
+  .burst line:nth-of-type(4) { --tx:  11px; --ty: -11px; --d: 1.14s; stroke: var(--green); }
+  /* Direction, colour and moment, one particle per line. Written out rather than
+     generated: ten is few enough to read, and an even ring of exactly-spaced dots
+     looks mechanical — these are deliberately not evenly spaced, and the four
+     largest do not share a quadrant.
+
+     Only the app's three: --green for most of them, --amber, and the logo's
+     scarlet. The reference this follows threw a blue and a slate grey, neither of
+     which means anything here. */
+  /* nth-of-type, not nth-child: the group holds lines as well as circles now, and
+     nth-child would count across both and shift every dot by four. */
+  .burst circle:nth-of-type(1)  { --tx:   0px; --ty: -34px; --d: 1.12s; fill: var(--green); }
+  .burst circle:nth-of-type(2)  { --tx: -23px; --ty: -25px; --d: 1.18s; fill: var(--amber); }
+  .burst circle:nth-of-type(3)  { --tx:  25px; --ty: -22px; --d: 1.14s; fill: #ed1c24; }
+  .burst circle:nth-of-type(4)  { --tx: -35px; --ty:  -4px; --d: 1.22s; fill: var(--green); }
+  .burst circle:nth-of-type(5)  { --tx:  36px; --ty:   3px; --d: 1.16s; fill: var(--green); }
+  .burst circle:nth-of-type(6)  { --tx: -26px; --ty:  20px; --d: 1.26s; fill: var(--amber); }
+  .burst circle:nth-of-type(7)  { --tx:  26px; --ty:  21px; --d: 1.20s; fill: var(--green); }
+  .burst circle:nth-of-type(8)  { --tx:  -5px; --ty:  33px; --d: 1.30s; fill: #ed1c24; }
+  .burst circle:nth-of-type(9)  { --tx: -13px; --ty: -31px; --d: 1.34s; fill: var(--green); }
+  .burst circle:nth-of-type(10) { --tx:  16px; --ty:  30px; --d: 1.24s; fill: var(--amber); }
 
   .added h2 {
     margin: 0;
     font-family: var(--font-heading);
     font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2;
   }
-  /* What she just typed, read back at the one moment a typo is still cheap. */
+  /* What she just typed, read back at the one moment a typo is still cheap — so
+     it takes full-strength ink and the app's heading face. It is the fact this
+     card exists to confirm, and it was sitting a step quieter than the greeting
+     above it, which has the same words on every student. balance keeps a long
+     name from wrapping to a single orphaned word. */
   .added-who {
-    margin: .55rem 0 0;
-    font-size: .95rem; color: var(--ink-soft); line-height: 1.45;
+    margin: .6rem 0 0;
+    font-family: var(--font-heading);
+    font-size: 1rem; font-weight: 600; letter-spacing: -.01em;
+    color: var(--ink); line-height: 1.35;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  /* The two numbers, one step back. Tabular so roll 9 and roll 142 sit on the
+     same rhythm as the date below them. */
+  .added-meta {
+    margin: .2rem 0 0;
+    font-size: .875rem; color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
   }
   /* The enrollment date is what the attendance fraction will be counted from, so
      it is the one fact worth restating rather than decorating. */
@@ -328,7 +589,13 @@
      delays alone. Off by name instead. The confetti is not listed because it is
      never created under reduce-motion — see the script. */
   @media (prefers-reduced-motion: reduce) {
-    .problems, .flare, .added, .sending #add::after { animation: none; }
+    .problems, .flare, .sending #add::after,
+    dialog::backdrop, .added, .added h2, .added-who, .added-meta, .added-from,
+    .again, .done, .disc, .disc-warm, .tick,
+    .burst circle, .burst line { animation: none; }
+    /* The disc and the tick rest at full size and the warm bloom and every
+       particle rest invisible, so switching the whole set off leaves exactly the
+       finished mark: a green disc with a white check on it. */
     .flare { opacity: .55; }
   }
 </style>
@@ -349,7 +616,6 @@
 {% if added %}
 <dialog id="added" aria-labelledby="added-title" open>
   <div class="flare" aria-hidden="true"></div>
-  <div class="confetti" aria-hidden="true"></div>
   {# tabindex is what makes the card focusable at all; the script is what puts
      focus here rather than on "Add another". Focusing the card announces the
      dialog from its title instead of from its primary button, and keeps a heavy
@@ -357,11 +623,54 @@
      two links, Esc still closes. #}
   <div class="added" tabindex="-1">
     <span class="check" aria-hidden="true">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>
+      {# One svg, drawn from scratch. Its box is larger than the chip so the
+         particles have somewhere to go — they leave the green disc and travel
+         out over the card, which is what "bursting" needs room for.
+
+         The particles are bare circles stacked at the centre; every one of them
+         gets its direction, size, colour and delay from the nth-child rules in
+         the stylesheet. Nothing here carries an id, so there is nothing to
+         collide, and no element repeats.
+
+         pathLength="1" is what lets the CSS draw the mark with plain fractions:
+         the dash values stop depending on the path's real length, so nothing has
+         to measure it at runtime and the stroke can be redrawn without touching
+         the animation. #}
+      <svg class="mark" viewBox="0 0 84 84" fill="none">
+        {# Paint order is the reference's, and it is load-bearing. The burst comes
+           first, so every dot spends its first frames behind solid green and
+           emerges at the rim rather than appearing on top of the mark. Then the
+           warm bloom, then the disc that covers it, then the tick on top. #}
+        <g class="burst">
+          <circle cx="42" cy="42" r="2.2"/><circle cx="42" cy="42" r="1.6"/>
+          <circle cx="42" cy="42" r="2"/>  <circle cx="42" cy="42" r="1.4"/>
+          <circle cx="42" cy="42" r="1.9"/><circle cx="42" cy="42" r="2.1"/>
+          <circle cx="42" cy="42" r="1.5"/><circle cx="42" cy="42" r="1.8"/>
+          <circle cx="42" cy="42" r="1.2"/><circle cx="42" cy="42" r="1.3"/>
+          {# Each spark is drawn along its own heading, so nothing has to rotate. #}
+          <line pathLength="1" x1="42" y1="17" x2="42" y2="9"/>
+          <line pathLength="1" x1="67" y1="42" x2="75" y2="42"/>
+          <line pathLength="1" x1="25" y1="59" x2="19.4" y2="64.6"/>
+          <line pathLength="1" x1="59" y1="25" x2="64.6" y2="19.4"/>
+        </g>
+        <circle class="disc-warm" cx="42" cy="42" r="24"/>
+        <circle class="disc" cx="42" cy="42" r="24"/>
+        {# The page's own mark, unchanged: the same three points the check has
+           always had, moved into the middle of the larger box, at the same 2.5
+           weight the magnifier and the pencil are drawn at. Only how it arrives
+           is new. #}
+        <path class="tick" d="M35 42.5 39.5 47 49 37" stroke="var(--green)"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </span>
     <h2 id="added-title">Welcome to HR Academy!</h2>
-    <p class="added-who">{{ added.name }} · Roll {{ added.roll_no }} · Class {{ added['class'] }}</p>
+    {# The name on its own line and the two numbers beneath it. Run together they
+       wrapped mid-phrase on a long name — "…Rahman / Khan · Roll 142 · Class 12"
+       reads as though Khan were one of the facts rather than the end of the
+       name. Split, the name can wrap as a name and the roll and class stay a
+       pair. #}
+    <p class="added-who">{{ added.name }}</p>
+    <p class="added-meta">Roll {{ added.roll_no }} · Class {{ added['class'] }}</p>
     <p class="added-from">On your list from {{ added.enrollment_date }}</p>
     {# Both are ordinary links, so the whole moment works with no script at all:
        one reloads a blank form, the other goes home. The script upgrades the
@@ -370,26 +679,41 @@
     <a class="again" href="/students/new">Add another</a>
     <a class="done" href="/dashboard">Done ›</a>
   </div>
+  {# After the card, not before it. Painted first it fell down *behind* the
+     modal, which put the celebration under the thing being celebrated. Last in
+     the dialog, it falls across the front. pointer-events:none is what keeps
+     that safe — it inherits to every piece, so "Add another" stays tappable
+     through the whole shower. #}
+  <div class="confetti" aria-hidden="true"></div>
 </dialog>
 {% endif %}
 
 <form method="post" action="/students/new">
+  {# role="alert" and the focus the script gives it are what stop a rejected save
+     from being silent to anyone not looking at the top of the screen. #}
   {% if problems %}
-    <div class="problems">
+    <div class="problems" id="problems" role="alert" tabindex="-1">
       {% for problem in problems %}<p>{{ problem }}</p>{% endfor %}
     </div>
   {% endif %}
 
+  {# aria-invalid on the fields the problems are about — it is what a screen
+     reader announces and what draws the amber, one attribute doing both. #}
   <div class="group">
     <div class="wide">
       <label for="name">Name</label>
+      {# autocapitalize is the one keyboard hint that matters here: a name typed
+         on a phone should start each word capitalised without her reaching for
+         shift, and spellcheck has nothing useful to say about a proper noun. #}
       <input class="field" id="name" name="name" value="{{ form.name or '' }}"
-             autocomplete="off" required>
+             autocomplete="off" autocapitalize="words" spellcheck="false" required
+             {% if 'name' in invalid %}aria-invalid="true" aria-describedby="problems"{% endif %}>
     </div>
     <div>
       <label for="roll_no">Roll number</label>
       <input class="field" id="roll_no" name="roll_no" type="number" inputmode="numeric"
-             min="1" step="1" value="{{ form.roll_no or '' }}" autocomplete="off" required>
+             min="1" step="1" value="{{ form.roll_no or '' }}" autocomplete="off" required
+             {% if 'roll_no' in invalid %}aria-invalid="true" aria-describedby="problems"{% endif %}>
     </div>
     <div>
       <label for="class">Class</label>
@@ -397,7 +721,8 @@
          something the roster has never held. §3.2 is explicit that these are
          never enums. #}
       <input class="field" id="class" name="class" list="classes"
-             value="{{ form['class'] or '' }}" autocomplete="off" required>
+             value="{{ form['class'] or '' }}" autocomplete="off" autocapitalize="none" required
+             {% if 'class' in invalid %}aria-invalid="true" aria-describedby="problems"{% endif %}>
       <datalist id="classes">
         {% for value in classes %}<option value="{{ value }}">{% endfor %}
       </datalist>
@@ -408,7 +733,8 @@
     <div class="wide">
       <label for="slot">Slot</label>
       <input class="field" id="slot" name="slot" list="slots" placeholder="e.g. 6 - 9"
-             value="{{ form.slot or '' }}" autocomplete="off" required>
+             value="{{ form.slot or '' }}" autocomplete="off" autocapitalize="none" required
+             {% if 'slot' in invalid %}aria-invalid="true" aria-describedby="problems"{% endif %}>
       <datalist id="slots">
         {% for value in slots %}<option value="{{ value }}">{% endfor %}
       </datalist>
@@ -418,7 +744,8 @@
       {# Defaults to today and cannot be set past it, the same rule the entries
          page's own picker carries. #}
       <input class="field" id="enrollment_date" name="enrollment_date" type="date"
-             value="{{ form.enrollment_date or today }}" max="{{ today }}" required>
+             value="{{ form.enrollment_date or today }}" max="{{ today }}" required
+             {% if 'enrollment_date' in invalid %}aria-invalid="true" aria-describedby="problems"{% endif %}>
     </div>
   </div>
 
@@ -452,6 +779,21 @@
     document.getElementById("add").removeAttribute("aria-busy");
   });
 
+  // A rejected save re-renders the whole page, which means the banner is simply
+  // markup near the top — nothing announces it, and tabbing goes straight from
+  // the address bar into the fields past the one thing explaining why they are
+  // still full. Focusing it puts the reason first, and scrolls it into view on a
+  // phone that restored its old scroll position.
+  document.getElementById("problems")?.focus();
+
+  // A number input changes its value when the wheel turns over a focused field.
+  // On a desktop that means filling in the roll number, scrolling down to the
+  // rest of the form, and silently onboarding a different number than the one on
+  // screen a moment ago. Blur first, so the page scrolls and the value does not.
+  document.getElementById("roll_no").addEventListener("wheel", (event) => {
+    if (document.activeElement === event.target) event.target.blur();
+  });
+
   const dialog = document.getElementById("added");
   if (dialog) {
     // Rendered with [open] so it is visible even if this script never runs, then
@@ -476,28 +818,96 @@
     });
 
     // Not created at all under reduce-motion, rather than created and then held
-    // still — 28 elements nobody asked for is worse than none. The card and the
-    // light are handled in CSS, by name.
+    // still — fifty elements nobody asked for is worse than none. The card and
+    // the light are handled in CSS, by name.
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const stage = dialog.querySelector(".confetti");
-      // The app's own four: present, attention, absent, and the logo's scarlet —
-      // whose only other outings are the mark itself and the login screen's lamp.
-      const hues = ["#37854e", "#d9a441", "#bd4a66", "#ed1c24"];
-      for (let i = 0; i < 28; i++) {
+
+      // The origin is the mark itself, measured rather than guessed: the card
+      // grows with a long name, so a hardcoded offset would drift off the tick on
+      // exactly the rows where the moment matters most.
+      const mark = dialog.querySelector(".check").getBoundingClientRect();
+      stage.style.setProperty("--ox", mark.left + mark.width / 2 + "px");
+      stage.style.setProperty("--oy", mark.top + mark.height / 2 + "px");
+
+      // The reference's own palette, read off its shapes: four solid fills, and
+      // the two gradients it runs across the larger flakes.
+      const FLAKES = ["#3497fd", "#bd75ee", "#7fd04f", "#fe8c01", "#f75851",
+                      "#f72e67", "#a32693", "#5861ab"];
+      const GRADIENTS = ["linear-gradient(90deg,#f72e67,#f75851,#f8833b)",
+                         "linear-gradient(90deg,#5861ab,#7d449f,#a32693)"];
+      // Its streamer strokes, in the proportion it uses them — gold and red do
+      // most of the work, orange and green appear once each.
+      const RIBBONS = ["#fec456", "#ff4242", "#fec456", "#ff4242", "#f05a2d", "#4ac34c"];
+      // Its six rect sizes, divided by three: the file is a 414pt phone drawn at
+      // 3x, so a 27×96 splinter there is a 9×32 one here.
+      const SIZES = [[11, 15], [4, 22], [13, 13], [9, 32], [15, 18], [9, 19]];
+
+      const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+      for (let i = 0; i < 56; i++) {
         const piece = document.createElement("span");
-        piece.style.left = Math.random() * 100 + "%";
-        piece.style.height = 9 + Math.random() * 6 + "px";
-        piece.style.background = hues[i % hues.length];
-        piece.style.setProperty("--dx", Math.random() * 40 - 20 + "vw");
-        piece.style.setProperty("--spin", Math.random() * 720 - 360 + "deg");
-        piece.style.animationDuration = 1.1 + Math.random() * 0.7 + "s";
-        piece.style.animationDelay = Math.random() * 0.25 + "s";
+        const flake = document.createElement("i");
+        // Roughly the reference's two-to-one split of flakes to ribbons.
+        const ribbon = i % 3 === 2;
+
+        if (ribbon) {
+          const size = rand(13, 24);
+          flake.className = "ribbon";
+          flake.style.width = flake.style.height = size + "px";
+          flake.style.setProperty("--w", rand(3, 5) + "px");
+          flake.style.color = RIBBONS[i % RIBBONS.length];
+        } else {
+          const [w, h] = SIZES[i % SIZES.length];
+          flake.style.width = w + "px";
+          flake.style.height = h + "px";
+          // The gradients ride the wider flakes, as they do in the reference.
+          flake.style.background = w >= 13 && i % 5 === 0
+            ? GRADIENTS[i % GRADIENTS.length]
+            : FLAKES[i % FLAKES.length];
+        }
+
+        // A full circle, as the reference throws it — a popper going off scatters
+        // in every direction and lets gravity sort it out, and the pieces sent
+        // downward are what stop the burst reading as a fountain.
+        const angle = Math.random() * Math.PI * 2;
+        // Measured against the screen, not in fixed pixels. A throw that fills a
+        // 414pt phone flings most of the burst clean off a 390pt one, and the two
+        // are the phones this is actually used on — so the distance is a fraction
+        // of the viewport and the picture is the same on both.
+        //
+        // Simulated at 390×844 rather than eyeballed, because 56 randomised
+        // pieces vary enough between loads to make a single screenshot useless
+        // for judging this. At 0.38–0.78 of the width the burst reaches 1.10× the
+        // half-width at its peak — filling the screen and just clearing the
+        // edges, the way the reference does — with 54 of 56 pieces still on
+        // screen. Wider, at 0.95, throws a third of them out of frame while the
+        // moment is still meant to be read; narrower, at 0.70, never reaches the
+        // edges at all.
+        const power = innerWidth * rand(0.38, 0.78);
+        piece.style.setProperty("--x", Math.cos(angle) * power + "px");
+        piece.style.setProperty("--y", -Math.sin(angle) * power + "px");
+        // Past the bottom from the top of the arc, on any height of phone.
+        piece.style.setProperty("--fall", innerHeight * rand(0.75, 1.3) + "px");
+        piece.style.setProperty("--dur", rand(2.2, 3) + "s");
+        // The card is settled by 0.89s and the tick finishes landing at 1.40s, so
+        // the shower goes off at 1.5 — after both, with a beat of air, and while
+        // the last of the tick's own sparks are still clearing so the two read as
+        // one celebration rather than two. Carried as a delay rather than a timer,
+        // so the browser schedules it on the same clock as the rest of the
+        // sequence and a busy main thread cannot slide it out of step.
+        piece.style.setProperty("--d", 1.5 + Math.random() * 0.18 + "s");
+        // Fixed for the piece's whole flight. The reference bakes one angle into
+        // each shape and never spins it, and that is what stops a burst this
+        // dense turning into visual noise.
+        flake.style.setProperty("--r", rand(0, 360) + "deg");
+
+        piece.append(flake);
         stage.append(piece);
       }
-      // A one-shot, never a loop: the whole thing is gone a moment after the last
-      // piece lands, so nothing is left running behind the card or when the tab
-      // is hidden.
-      setTimeout(() => stage.remove(), 2400);
+      // A one-shot, never a loop: gone once the last piece is off screen, so
+      // nothing is left running over the card or when the tab is hidden.
+      // 1.5s of delay at the latest, then the longest flight on top of it.
+      setTimeout(() => stage.remove(), 5000);
     }
   }
 </script>
