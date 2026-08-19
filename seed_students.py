@@ -15,18 +15,12 @@ from typing import Any
 
 from ist import IST
 
-# §3.1 — exactly two. Passwords live in env vars, not the database, so these
-# documents carry no password field.
 USERS: list[dict[str, str]] = [
     {"name": "Sahithi", "username": "sahithi", "role": "admin"},
     {"name": "Nithya", "username": "nithya", "role": "teacher"},
 ]
 
-# The CSV names teachers by username, and case is not the proofreader's problem.
 TEACHERS = {u["username"] for u in USERS}
-# No SLOTS set. §3.2: slot is free text, not an enum — the real roster holds
-# seven distinct timings, so anything that validated against a fixed list would
-# reject the whole file.
 REQUIRED = ("roll_no", "name", "teacher", "slot", "enrollment_date", "class")
 
 
@@ -37,9 +31,9 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
     error per run is what makes people give up and hand-edit the database instead.
     """
     problems: list[str] = []
-    first_seen: dict[int, int] = {}  # roll number -> the line that claimed it
+    first_seen: dict[int, int] = {}
 
-    for line, row in enumerate(rows, start=2):  # line 1 is the CSV header
+    for line, row in enumerate(rows, start=2):
         def field(name: str) -> str:
             return (row.get(name) or "").strip()
 
@@ -53,8 +47,6 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
 
         roll = field("roll_no")
         if roll:
-            # Stored as an integer so .sort("roll_no") puts 2 before 10. isascii()
-            # keeps out the digits isdigit() accepts but int() rejects, like "²".
             number = int(roll) if roll.isascii() and roll.isdigit() else None
             if number is None or number < 1:
                 problems.append(
@@ -67,8 +59,6 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
             else:
                 first_seen[number] = line
 
-        # Matched lowercase against users.username, so "Sahithi" and "sahithi"
-        # are the same teacher.
         teacher = field("teacher").lower()
         if teacher and teacher not in TEACHERS:
             problems.append(
@@ -77,7 +67,6 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
 
         date = field("enrollment_date")
         if date:
-            # strptime rejects both the wrong shape and impossible days like 2026-02-30.
             try:
                 datetime.strptime(date, "%Y-%m-%d")
             except ValueError:
@@ -89,15 +78,12 @@ def validate(rows: list[dict[str, str]]) -> list[str]:
 
 
 def seed(rows: list[dict[str, str]]) -> None:
-    # Imported here rather than at module top: db.py opens the connection on
-    # import, and the point of this script is that validation happens first.
     from pymongo import ReturnDocument
 
     from db import db
 
     now = datetime.now(IST)
 
-    # §11 item 5 — unique indexes exist before the first write, not after.
     db.users.create_index("username", unique=True)
     db.students.create_index("roll_no", unique=True)
     db.students.create_index([("teacher_id", 1), ("is_active", 1)])
@@ -114,8 +100,6 @@ def seed(rows: list[dict[str, str]]) -> None:
             upsert=True,
             return_document=ReturnDocument.AFTER,
         )
-        # upsert=True with ReturnDocument.AFTER always returns a document;
-        # the narrowing is for the type checker, not a real branch.
         assert doc is not None
         teacher_ids[user["username"]] = doc["_id"]
 
@@ -123,7 +107,6 @@ def seed(rows: list[dict[str, str]]) -> None:
     for row in rows:
         teacher_id = teacher_ids[row["teacher"].strip().lower()]
         result = db.students.update_one(
-            # int, not str. validate() has already proved this parses.
             {"roll_no": int(row["roll_no"].strip())},
             {
                 "$set": {
@@ -136,9 +119,6 @@ def seed(rows: list[dict[str, str]]) -> None:
                     "notes": (row.get("notes") or "").strip() or None,
                     "updated_at": now,
                 },
-                # Never in $set. Re-running the seed must not revive a student who
-                # was deactivated, nor wipe the date they left on — §4.5 needs
-                # deactivated_at to answer "was this student enrolled on 15 July?"
                 "$setOnInsert": {
                     "is_active": True,
                     "deactivated_at": None,
@@ -168,7 +148,6 @@ def _self_check() -> None:
     }
     assert validate([good]) == []
     assert validate([{**good, "teacher": "Sahithi"}]) == [], "teacher case must not matter"
-    # §3.2 — free text. A fixed list of timings would reject the real roster.
     assert validate([{**good, "slot": "8 - 10"}]) == [], "any slot must be accepted"
     assert validate([good, good]), "duplicate roll_no must be caught"
     assert validate([{**good, "name": ""}]), "blank required field must be caught"
@@ -191,8 +170,6 @@ def main() -> None:
     paths = [a for a in sys.argv[1:] if not a.startswith("--")]
     path = paths[0] if paths else "students.csv"
     with open(path, newline="", encoding="utf-8") as f:
-        # DictReader is typed as dict[str | Any, str | Any]; the header row is
-        # plain strings, so pin it to what it actually is.
         rows: list[dict[str, str]] = [dict(row) for row in csv.DictReader(f)]
 
     problems = validate(rows)
@@ -202,7 +179,6 @@ def main() -> None:
             print(f"  {problem}", file=sys.stderr)
         sys.exit(1)
 
-    # Stops here, before seed() imports db — so --dry-run never opens a connection.
     if "--dry-run" in flags:
         print(f"{len(rows)} rows validated. Nothing was written.")
         return

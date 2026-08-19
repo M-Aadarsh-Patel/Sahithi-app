@@ -1,23 +1,12 @@
 <!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HR Academy</title>
-{# Archivo for the two headings, Tabler for the tile icons — this is the only
-   page in the app that uses icons at all. #}
 {% set heading_font = true %}
 {% set icons = true %}
 {% include "_style.html" %}
 <style>
   body { max-width: 30rem; margin: 0 auto; }
 
-  /* Two columns, four rows. Row 1 is the logo with the logout link opposite it;
-     the heading, the welcome and the meta line each span both columns below, so
-     they all start on the logo's left edge. align-items: center is what puts the
-     logout link on the logo's centre line rather than at the top of the row.
-
-     The hairline is the header's own bottom border — one element, no extra
-     divider in the markup, and it closes the block before the tiles begin. It
-     fades out at both ends rather than running hard into the page padding — a
-     drawn line instead of a rule across the screen. */
   header {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -30,16 +19,12 @@
                     transparent, var(--line) 14%, var(--line) 86%, transparent) 1;
   }
 
-  /* 120px wide; the height follows the file's own 1036x381 and lands at ~44px,
-     the same as the logout link's tap target, so the two sit level in row 1. */
-  /* No filter on the mark. Muting it here was tried and reverted: the red is the
-     brand and it stays the brand on every screen it appears on. */
   .logo { grid-row: 1; grid-column: 1; display: block; width: 120px; height: auto; }
 
   .logout {
     grid-row: 1; grid-column: 2; justify-self: end;
     display: inline-flex; align-items: center; min-height: var(--tap);
-    padding: 0 .7rem; margin-right: -.7rem;   /* tap area without visual bulk */
+    padding: 0 .7rem; margin-right: -.7rem;
     border-radius: var(--radius-sm);
     color: var(--ink-soft); text-decoration: none;
     font-size: .9rem; font-weight: 600;
@@ -47,10 +32,6 @@
   }
   .logout:active { color: var(--ink); background: rgba(255, 255, 255, .07); }
 
-  /* The top margin is the breathing room under the logo — put here rather than
-     on the logo, so it does not grow row 1 and drag the logout link off the
-     logo's centre line. line-height 1.1 because the body's 1.5 would leave a
-     34px word sitting in a 51px box with the space all in the wrong places. */
   h1 {
     grid-row: 2; grid-column: 1 / -1;
     margin: .9rem 0 0;
@@ -65,9 +46,6 @@
     font-size: 1.0625rem; color: var(--ink-soft);
   }
 
-  /* Icon and text on one baseline. The middot is a literal character between two
-     values rather than a border or a pseudo-element, so it wraps with them if
-     the line ever runs out of room. */
   .meta {
     grid-row: 4; grid-column: 1 / -1;
     margin: .5rem 0 0;
@@ -77,32 +55,20 @@
   }
   .meta .ti { font-size: 1rem; }
 
-  /* ---- Tiles ----------------------------------------------------------- */
-  /* Icon chip, text, trailing glyph. The middle column is the only one that
-     grows, so the chips stay put down the column and the titles all start at
-     the same x whatever their length. */
   .tiles { display: grid; gap: .7rem; margin: 0; }
   .tile {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
     column-gap: .85rem;
-    padding: 1rem 1.1rem;                             /* 16px vertical */
+    padding: 1rem 1.1rem;
     border-radius: var(--radius);
     text-decoration: none;
   }
-  /* The glyph sits in a rounded chip rather than bare on the card — the
-     difference between an icon placed on a tile and an instrument set into
-     it. :first-child scopes this to the leading icon; the chevron that trails
-     a live tile stays a bare glyph. */
   .tile .ti:first-child {
     display: flex; align-items: center; justify-content: center;
     width: 2.5rem; height: 2.5rem;
     font-size: 1.3rem;
-    /* --radius-sm, not the 10px this shipped with. It was the last one-off radius
-       in the app: a 40px chip nested inside a 12px tile wants the smaller of the
-       two tokens, and a literal that happens to fall between them is drift
-       whatever it looks like. */
     border-radius: var(--radius-sm);
   }
   .tile .ti { font-size: 1.5rem; }
@@ -117,10 +83,6 @@
     font-size: .8125rem; line-height: 1.2; color: var(--ink-faint);
   }
 
-  /* Live: raised off the page with a sheen down its face, full-strength text,
-     a green-lit chip, and it moves when pressed — signed by the 4px green bar
-     down its left edge, the same mark a marked student row wears on the entries
-     screen. One state language across both screens. */
   a.tile {
     background: linear-gradient(180deg,
                   rgba(255, 255, 255, .028), rgba(255, 255, 255, 0) 55%),
@@ -131,15 +93,6 @@
     box-shadow: var(--edge), var(--lift);
     transition: transform .1s ease, border-color .14s ease;
   }
-  /* The page had no hover at all — four :active states and nothing for a pointer,
-     so on a desktop browser the one tappable tile and the log-out link gave no
-     sign they were live until you pressed them. Up on hover, down on press, the
-     same pairing the login screen's button uses.
-
-     border-left-color is restated because the shorthand above it sets all four
-     sides, and without it hovering the live tile would wipe the green signature
-     edge §3.2 exists for. Scoped to (hover: hover) so a phone never gets a
-     hover state stuck on after a tap. */
   @media (hover: hover) {
     a.tile:hover {
       border-color: var(--line-strong);
@@ -149,56 +102,29 @@
     .logout:hover { color: var(--ink); }
   }
   a.tile:active { transform: scale(.985); }
-  /* Every live tile's leading glyph, not one named icon. This was scoped to
-     .ti-checkbox while "Today's entries" was the only tile that worked, so the
-     second one to come alive rendered its chip shape with no fill and no green
-     in it — a lit tile wearing the unlit tile's icon. */
   a.tile .ti:first-child {
     color: var(--green);
     background: var(--green-tint);
     box-shadow: inset 0 0 0 1px rgba(55, 133, 78, .30);
   }
-  /* The chevron is the one thing allowed to answer a press beyond the scale:
-     a 2px lean into the direction the tap is about to travel. */
   a.tile .ti-chevron-right {
     font-size: 1.15rem; color: var(--ink-faint);
     transition: transform .14s var(--ease);
   }
   a.tile:active .ti-chevron-right { transform: translateX(2px); }
 
-  /* Not yet built: sunk into the page instead of raised, quieter than the live
-     tile in every respect, no press state, and the cursor never becomes a
-     pointer. Dimmed, but the title stays readable — this is information, not a
-     disabled control, and a label nobody can read reads as broken rather than
-     as pending.
-
-     Solid, not dashed. Two of the three tiles on the app's main screen are
-     these, and a dashed outline is the drawing convention for a hole where
-     something should be — it made the dashboard look like scaffolding rather
-     than like a product with more coming. The same silhouette as the live tile,
-     one step back in contrast, says "planned" without saying "unfinished". */
   .soon {
     background: rgba(0, 0, 0, .18); color: var(--ink-soft);
     border: 1px solid var(--line);
-    /* The same 4px the live tile's green bar takes, in the border colour it
-       already had. Not a second accent — geometry: without it these two tiles
-       are 3px narrower on the left and every icon and title in the column stops
-       lining up with the one above. Unlit is the point, aligned is the reason. */
     border-left: 4px solid var(--line);
     cursor: default;
   }
   .soon .ti { color: var(--ink-faint); }
-  /* Same chip silhouette as the live tile, sunken and neutral — planned, not
-     unfinished, but clearly not lit. */
   .soon .ti:first-child {
     background: rgba(255, 255, 255, .045);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05);
   }
   .soon .tile-title { color: var(--ink-soft); font-weight: 500; }
-  /* A chip where the live tile has its chevron, in the same shape the entries
-     screen already uses for its "today" badge. It replaces a full line of
-     letterspaced capitals reading COMING SOON, which was the loudest text on the
-     page and was announcing the one thing the page cannot do. */
   .soon-chip {
     font-size: .62rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: .1em;
@@ -208,12 +134,6 @@
     border-radius: 999px; padding: .24rem .5rem .2rem;
   }
 
-  /* ---- Arrival ---------------------------------------------------------- */
-  /* The header settles first, then the tiles follow it up the page one after
-     another — 60ms apart, the same curve the login page lands on. `backwards`,
-     never `both`: a forwards fill would keep applying the final keyframe at a
-     priority that silently kills the tiles' :active transforms for the rest of
-     the session. */
   @keyframes header-in {
     from { opacity: 0; }
     to   { opacity: 1; }
@@ -227,16 +147,11 @@
   .tile:nth-child(2) { animation-delay: .06s; }
   .tile:nth-child(3) { animation-delay: .12s; }
 
-  /* The shared rule crushes durations but leaves the delays, which under
-     reduce-motion would hold the later tiles invisible for their stagger for no
-     reason. Off by name instead. */
   @media (prefers-reduced-motion: reduce) {
     header, .tile { animation: none; }
   }
 </style>
 
-{# width/height are the intrinsic pixels, so the browser reserves the right box
-   before the file arrives and the heading below it never jumps. #}
 <header>
   <img class="logo" src="/static/logo.png" alt="HR Academy" width="1036" height="381">
   <h1>Dashboard</h1>
@@ -247,13 +162,6 @@
   <a class="logout" href="/logout">Log out</a>
 </header>
 
-{# Every icon is decorative and hidden from assistive tech: each tile's name
-   comes from its own text, and a screen reader announcing "checkbox" before
-   "Today's entries" would only get in the way.
-
-   The two placeholders are plain divs, not links or disabled buttons. Nothing
-   to focus, nothing to press, no href to 404 — they cannot be mistaken for a
-   broken target because they were never a target. #}
 <nav class="tiles">
   <a class="tile" href="/entries">
     <i class="ti ti-checkbox" aria-hidden="true"></i>

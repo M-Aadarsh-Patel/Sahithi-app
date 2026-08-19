@@ -21,12 +21,9 @@ from itsdangerous import TimestampSigner
 
 from db import db
 from ist import IST, today_ist
-# Reuse the harness rather than restating it: same free port, same real HTTP,
-# same signed-cookie forgery. Importing is safe — test_session guards its own
-# entry point behind __main__.
 from test_session import forge, free_port, request, start_server
 
-ROLL = "99001"  # far outside the real roster
+ROLL = "99001"
 FUTURE = (datetime.now(IST) + timedelta(days=3)).strftime("%Y-%m-%d")
 
 ok = True
@@ -82,8 +79,6 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     check("same fields as a seeded student",
           sorted(student.keys()) == sorted(seeded.keys()),
           f"extra={sorted(set(student) - set(seeded))} missing={sorted(set(seeded) - set(student))}")
-    # A roll number stored as a string sorts "10" before "2", which would quietly
-    # scramble the register.
     check("roll_no is an int", isinstance(student["roll_no"], int), f"{student['roll_no']!r}")
     check("is_active true", student["is_active"] is True)
     check("deactivated_at null", student["deactivated_at"] is None)
@@ -91,7 +86,6 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     check("onboarded_by the same", student["onboarded_by"] == teacher["_id"])
     check("enrollment_date is today", student["enrollment_date"] == today_ist(),
           f"{student['enrollment_date']!r}")
-    # "" would claim a phone number was recorded. §3.2 has both as optional.
     check("blank phone stored as None", student["parent_phone"] is None,
           f"{student['parent_phone']!r}")
     check("blank notes stored as None", student["notes"] is None, f"{student['notes']!r}")
@@ -101,9 +95,6 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     _, headers, body = request(base, "GET", "/students/new", cookie=after)
     check("modal rendered on the redirect target", "Welcome to HR Academy!" in body)
     check("the student is named back", "ZZ Test Student" in body)
-    # Carrying the cookie forward is the whole test: the flash is popped from the
-    # session, so it is the *updated* cookie that no longer holds it. Replaying
-    # the old one is not a refresh, it is a different browser.
     _, _, body = request(base, "GET", "/students/new", cookie=session_cookie(headers, after))
     check("gone on a refresh", "Welcome to HR Academy!" not in body)
 
@@ -113,7 +104,6 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     check("names who holds it", "ZZ Test Student" in body)
     check("still exactly one document", db.students.count_documents({"roll_no": int(ROLL)}) == 1)
     check("the impostor was not written", db.students.count_documents({"name": "ZZ Impostor"}) == 0)
-    # The banner alone leaves her hunting seven boxes for the one it means.
     check("the roll number field is marked", 'name="roll_no"' in body
           and 'aria-invalid="true"' in body.split('name="roll_no"')[1].split(">")[0])
     check("what she typed is still there", 'value="ZZ Impostor"' in body)
@@ -128,8 +118,6 @@ def run_checks(base: str, cookie: str, teacher: dict[str, Any]) -> None:
     status, _, body = post(form(roll_no="R014"))
     check("rejected rather than 422", status == 400, f"status={status}")
     check("nothing written", db.students.count_documents({"name": "ZZ Test Student"}) == 1)
-    # validate() writes for a CSV proofreader, in the CSV's column names. The
-    # label above the box on this form reads "Roll number" and never "roll_no".
     check("said in the form's own words", "Roll number must be a whole number" in body,
           "roll_no" if "roll_no is" in body or "roll_no '" in body else "")
     check("no raw field names leak through", "roll_no '" not in body)

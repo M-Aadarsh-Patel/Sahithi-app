@@ -4,27 +4,12 @@
 <title>Sign in</title>
 {% include "_style.html" %}
 <style>
-  /* Deeper than the app's --paper. The logo is a cut-out PNG whose "HR" is white
-     with only a hairline outline, so the darker the field behind it, the more it
-     reads as the mark rather than as an image pasted onto a page. */
-  /* The whole stack sits in the middle of the viewport rather than hanging from
-     the top. svh, not vh or dvh: the small viewport height is the one that does
-     not change when the URL bar hides, so the logo never drifts mid-scroll.
-     min-height, so if a phone is short enough that the content does not fit, the
-     page simply grows and scrolls instead of clipping the top off.
-
-     align-items stays at its default stretch — centring it would shrink the form
-     and its controls to their content width instead of filling the column. */
   body {
     max-width: 23rem; margin: 0 auto;
     min-height: 100svh;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    /* The outermost of the three intervals. All three are gaps on one 8px base —
-       48 here, 24 inside the form, 8 inside the credential block — so the page
-       has a spacing scale rather than a set of one-off margins, and each level of
-       nesting is visibly a step tighter than the one containing it. */
     gap: 3rem;
     padding-top: 2rem;
     padding-bottom: calc(2rem + env(safe-area-inset-bottom));
@@ -32,58 +17,19 @@
     text-align: center;
   }
 
-  /* The logo says "HR ACADEMY" itself, so the heading's text would have been a
-     second copy of it. The <h1> stays as the page's heading and the alt text
-     carries the name. */
-  /* Declared for parity with the other two screens' headings, though it resolves
-     to the system stack here: this h1's content is the logo image, not text, so
-     the page does not load Archivo at all. If words are ever added beside or
-     below the mark, set `heading_font = true` before the _style.html include or
-     they will quietly come out in the fallback. */
   h1 { margin: 0; font-family: var(--font-heading); }
-  /* Full column width, not 88% of it. The PNG is trimmed — its ink runs to both
-     edges of the canvas — so a 100% box puts the mark's own left and right edges
-     exactly on the edges of the controls below it. At 88% the mark sat inset by
-     24px on each side, an offset that matched nothing else on the page and gave
-     a two-element composition three different vertical edges. */
-  /* A drop-shadow, not a box-shadow: the PNG is a cut-out, so box-shadow would
-     draw a rectangle behind a mark that has no rectangle. drop-shadow follows the
-     alpha, which puts the shadow under the letterforms themselves and lifts the
-     mark off the lit field rather than off a card. */
   .logo {
     display: block; width: 100%; height: auto;
     filter: drop-shadow(0 8px 22px rgba(0, 0, 0, .6));
   }
 
-  /* ---- Arrival ---------------------------------------------------------- */
 
-  /* A pool of warm light behind the mark, and the mark resolving out of it. The
-     page is a near-black field by design, so the one thing it can do that no
-     other screen in the app can is turn a light on. Everything else here follows
-     that light in.
-
-     Fixed rather than absolute, which takes it out of body's flex flow — a
-     static ::before would have become a flex item and pushed the stack down.
-     z-index -1 puts it above the page background and behind every control, so
-     the form never sits inside a wash. */
   body::before {
     content: "";
     position: fixed;
     left: 50%; top: 38svh;
-    /* height: auto, not inherited: the shared page glow in _style.html sets an
-       explicit height on this same pseudo-element, and an explicit height
-       silently wins over aspect-ratio — without this the lamp flattens into a
-       wide ellipse instead of the round pool the gradient was drawn for. */
     width: min(48rem, 150vw); height: auto; aspect-ratio: 1;
     transform: translate(-50%, -50%);
-    /* Two pools, layered. On top: the off-white core with an amber falloff, the
-       same amber the app uses for warmth elsewhere. Beneath it, wider and
-       fainter still, the logo's own scarlet — the one place outside the mark
-       itself the brand red appears. It sits centred on the wordmark's red line,
-       so the mark reads as the thing casting the light, and at .045 alpha it
-       warms the field without ever reading as a red shape. At peak the pair
-       lifts the field behind the logo by roughly one step of grey — enough to
-       read as a lamp, not enough to cost the cut-out its contrast. */
     background:
       radial-gradient(closest-side,
         rgba(242, 239, 233, .07),
@@ -97,21 +43,12 @@
     animation: lamp 1.1s var(--ease) both;
   }
 
-  /* Overshoots to full and settles back to .62, which is what makes it read as a
-     light coming up rather than a shape fading in. `both` on this one only: it
-     is the single element whose resting state differs from its base style. */
   @keyframes lamp {
     0%   { opacity: 0; transform: translate(-50%, -50%) scale(.72); }
     55%  { opacity: 1; }
     100% { opacity: .62; transform: translate(-50%, -50%) scale(1); }
   }
 
-  /* Blur, not just a fade. A logo that fades in is a logo appearing; a logo that
-     sharpens is one the light has reached. It is one bounded filter on one
-     image, run once. */
-  /* The drop-shadow is restated in both keyframes. filter is one property, so a
-     keyframe naming only blur() would drop the shadow for the length of the
-     animation and snap it back at the end. */
   @keyframes mark-in {
     from { opacity: 0; transform: translateY(14px) scale(.985);
            filter: blur(9px) drop-shadow(0 8px 22px rgba(0, 0, 0, .6)); }
@@ -123,35 +60,18 @@
     to   { opacity: 1; transform: none; }
   }
 
-  /* `backwards`, never `forwards` or `both`. A forwards fill keeps applying the
-     final keyframe after the animation ends, at a priority that beats every rule
-     below it — the buttons' :active transforms would silently stop working for
-     the rest of the session. backwards covers the delay and then hands the
-     element back to its own styles. */
   .logo     { animation: mark-in .7s var(--ease) backwards; }
   .profiles { animation: lift-in .5s var(--ease) .30s backwards; }
   #password { animation: lift-in .5s var(--ease) .37s backwards; }
   #signin   { animation: lift-in .5s var(--ease) .44s backwards; }
 
-  /* ---- Retry ------------------------------------------------------------ */
 
-  /* A wrong password re-renders this whole page, so without this the welcome
-     plays again on every failed attempt — the light comes up a second and a
-     third time at someone who never left. On the retry the page is simply
-     already there, the lamp sits at its resting value, and the only things that
-     move are the two that changed. */
   .retry .logo, .retry .profiles, .retry #password, .retry #signin {
     animation: none;
   }
   .retry::before { animation: none; opacity: .62; }
 
-  /* ---- Controls --------------------------------------------------------- */
 
-  /* Names for things whose meaning is carried visually. The logo says the name of
-     the academy, the two tiles say who is signing in, and the field's placeholder
-     says "Password" — all of which a screen reader either cannot see or loses the
-     moment the field has a value. These labels are the same words, in the DOM,
-     for anyone not reading the picture. */
   .sr-only {
     position: absolute; width: 1px; height: 1px;
     margin: -1px; padding: 0; border: 0;
@@ -159,22 +79,9 @@
   }
   fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 
-  /* The page is a mark and a two-step task: say who you are, prove it, then go.
-     The two things you supply are one block; the button is what happens after it,
-     so it is the one thing set apart.
-
-     Three intervals, deliberately far apart — 38px under the mark, 8px inside the
-     block, 24px before the button. Before this the three gaps below the logo were
-     38 / 17.5 / 12.8, which is one interval repeated: four evenly stacked slabs
-     with no grouping in them at all. Worse, the tightest of the three sat between
-     the password and the button, binding an input to an action while pushing
-     apart the two fields that actually belong together. */
   form { display: flex; flex-direction: column; gap: 1.5rem; }
   .credentials { display: flex; flex-direction: column; gap: .5rem; }
 
-  /* Same .5rem as the block it sits in, so the pair of tiles and the field below
-     them are on one interval and the block reads as a single control surface
-     rather than as three things that happen to be near each other. */
   .profiles {
     display: grid; grid-template-columns: 1fr 1fr;
     gap: .5rem;
@@ -183,9 +90,6 @@
     display: flex; align-items: center; justify-content: center;
     min-height: 3.5rem;
     background: var(--card); color: var(--ink-soft);
-    /* --radius, not --radius-sm: these two are cards you pick between, not the
-       field-sized controls below them, and 12px is what the rest of the system
-       uses for a card. */
     border: 1px solid var(--line-strong); border-radius: var(--radius);
     font-weight: 600; cursor: pointer;
     box-shadow: var(--edge), var(--lift);
@@ -193,11 +97,6 @@
                 color var(--dur) ease, box-shadow var(--dur) ease,
                 transform .1s ease;
   }
-  /* :not(:has(input:checked)) rather than ordering this before the checked rule —
-     the two selectors compute to the same specificity, so without it whichever
-     came last would win and hovering the tile you already picked would pull it
-     back out of its selected colour. A committed choice does not react to the
-     pointer passing over it. */
   @media (hover: hover) {
     .profiles label:not(:has(input:checked)):hover {
       color: var(--ink); border-color: var(--ink-faint);
@@ -205,38 +104,15 @@
     #signin:hover { transform: translateY(-1px); }
   }
   .profiles label:active { transform: scale(.98); }
-  /* Transparent and out of flow rather than display:none, which would take the
-     radio out of the tab order and hide it from screen readers entirely. It
-     stays exactly where it would have sat inside the label, so focus lands in
-     the right place on the page. */
   .profiles input { position: absolute; opacity: 0; }
-  /* Level 2: the fill, the ring in the same hue, and a soft glow of it spilling
-     onto the page, plus the hairline inner highlight that --glow-green carries.
-     This is the one control on the screen that commits to a choice, and low-alpha
-     coloured light is what makes that read as lit rather than merely recoloured. */
   .profiles label:has(input:checked) {
     background: var(--green); border-color: var(--green); color: #fff;
-    /* --lift stays under the glow. On its own, --glow-green replaced the tile's
-       elevation instead of adding to it, so the card you had just chosen sat
-       flatter on the page than the one you had not — the opposite of what
-       picking it should do. Level 2 is a lit surface on top of Level 1, not
-       instead of it. --edge is dropped rather than stacked: --glow-green carries
-       its own brighter inner highlight at the same 1px, and two of them just
-       add up. */
     box-shadow: var(--lift), var(--glow-green);
   }
   .profiles label:has(input:focus-visible) {
     outline: 2px solid var(--focus); outline-offset: 2px;
   }
 
-  /* Lifted onto the page, not sunk into it. On the entries screen a topic box is
-     recessed below its card; here there is no card, and recessing a field into a
-     background this dark leaves a hole rather than a control.
-
-     --lift as well as --edge, which is what the paragraph above always claimed:
-     with only the lit top edge, this was the one control in the column with no
-     shadow under it, sitting visibly flatter than the tiles above and the button
-     below while describing itself as lifted. */
   #password {
     width: 100%; min-height: 3rem;
     padding: 0 .85rem;
@@ -250,26 +126,16 @@
   #password:focus {
     outline: none; border-color: var(--focus); box-shadow: var(--focus-ring);
   }
-  /* The banner names the problem; this points at the field that fixes it, in the
-     same amber, and then lets go. It ends on the field's own border colour, so
-     there is nothing to fill forward. */
   @keyframes wrong-field {
     0%, 100% { border-color: var(--line-strong); }
     18%, 65% { border-color: var(--amber); }
   }
   .retry #password { animation: wrong-field .9s ease .1s backwards; }
-  /* Tapping the field is the answer to the prompt, so the prompt stops. Without
-     this the amber keeps overriding the focus border for the rest of its run,
-     and typing into a field that has not visibly taken focus reads as broken. */
   #password:focus { animation: none; }
 
-  /* position/overflow are for the pending sweep below: an ::after the width of
-     the button, cropped to its rounded corners. */
   #signin {
     position: relative; overflow: hidden;
     width: 100%; min-height: 3rem;
-    /* A hairline of pure white at the top easing into --ink, plus the lit top
-       edge — what separates a key from a slab of paint. */
     background: linear-gradient(180deg, #ffffff, var(--ink)); color: var(--paper);
     border: 1px solid var(--ink); border-radius: var(--radius-sm);
     font-size: 1rem; font-weight: 600; letter-spacing: -.005em; cursor: pointer;
@@ -278,10 +144,6 @@
   }
   #signin:active { transform: scale(.985); opacity: .9; }
 
-  /* Signing in is a full-page POST, and on a cold server it can sit for a second
-     or more with the tap already forgotten and nothing on screen saying the app
-     heard it. The sweep is the only thing on this page that loops, and it only
-     ever runs while the browser is already navigating away. */
   #signin::after {
     content: "";
     position: absolute; inset: 0;
@@ -289,9 +151,6 @@
                   transparent 32%, rgba(16, 15, 14, .16) 50%, transparent 68%);
     opacity: 0;
   }
-  /* No dimming here. The sweep is the whole signal, and fading the one primary
-     action on the page makes a button that is working look like a button that
-     is unavailable. */
   .sending #signin { pointer-events: none; }
   .sending #signin::after { opacity: 1; animation: sweep 1.05s linear infinite; }
   @keyframes sweep {
@@ -299,10 +158,6 @@
     to   { transform: translateX(100%); }
   }
 
-  /* Amber, not the rose used for absent. A wrong password is a correctable
-     mistake, and it should not wear the same colour as a student's record.
-     Bordered all round rather than on the left, so it sits centred with
-     everything else instead of being anchored to one edge. */
   .error {
     margin: 0; padding: .7rem .85rem;
     background: var(--amber-tint); color: var(--amber);
@@ -310,19 +165,11 @@
     border-radius: var(--radius-sm); font-size: .92rem;
     animation: flag-in .3s var(--ease) backwards;
   }
-  /* Down from under the logo, which is where it comes from in the layout — the
-     form below is pushed down by exactly this much when it appears. */
   @keyframes flag-in {
     from { opacity: 0; transform: translateY(-8px); }
     to   { opacity: 1; transform: none; }
   }
 
-  /* The shared rule in _style.html crushes every duration to .01ms, which is the
-     right answer for a one-shot and a strobe for anything set to `infinite`, so
-     the sweep has to be switched off by name. The two states that were carried
-     by motion then need still equivalents: the lamp holds at its resting value,
-     and the button dims, because with the sweep gone that is the only thing left
-     to say the tap was heard. */
   @media (prefers-reduced-motion: reduce) {
     body::before, .logo, .profiles, #password, #signin,
     .error, .sending #signin::after { animation: none; }
@@ -331,34 +178,17 @@
   }
 </style>
 
-{# The class is what tells the CSS this is a second attempt rather than a first
-   sight of the page. #}
 <body{% if error %} class="retry"{% endif %}>
 
-{# width/height are the intrinsic pixels, so the browser reserves the right box
-   before the file arrives and the form below it never jumps. #}
 <h1><img class="logo" src="/static/logo.png" alt="HR Academy" width="1036" height="381"></h1>
 <form method="post" action="/login">
-  {# The error moved inside this block and under the form. It is about what was
-     typed, not about the page, so it groups with the fields it describes — and
-     above them, so eye order and screen-reader order both reach it before the
-     inputs it is talking about. #}
   <div class="credentials">
     {% if error %}<p class="error" id="login-error">{{ error }}</p>{% endif %}
-    {# Radios, not submit buttons. Two submit buttons gave the form a default one,
-       so pressing Enter silently signed in as whoever came first in the markup.
-
-       The fieldset is what gives the pair a name. Without it a screen reader
-       announces "Sahithi, radio button, 1 of 2" with nothing saying what is being
-       chosen — the question is asked only by the two tiles being the first thing
-       under the logo, which is not a thing you can hear. #}
     <fieldset class="profiles">
       <legend class="sr-only">Who is signing in?</legend>
       <label><input type="radio" name="username" value="sahithi" required>Sahithi</label>
       <label><input type="radio" name="username" value="nithya" required>Nithya</label>
     </fieldset>
-    {# The placeholder was the field's only name, and a placeholder stops being a
-       name the moment there is a value in the box. #}
     <label class="sr-only" for="password">Password</label>
     <input id="password" type="password" name="password" placeholder="Password"
            autocomplete="current-password" required
@@ -368,15 +198,10 @@
 </form>
 
 <script>
-  // submit only fires once the browser's own validation has passed, so an empty
-  // password or an unpicked profile never leaves the button stuck mid-sweep.
   document.querySelector('form').addEventListener('submit', () => {
     document.body.classList.add('sending');
     document.getElementById('signin').setAttribute('aria-busy', 'true');
   });
-  // Coming back with the back button restores this page from the bfcache exactly
-  // as it was left — mid-navigation, still sweeping at a request that resolved
-  // long ago.
   addEventListener('pageshow', () => {
     document.body.classList.remove('sending');
     document.getElementById('signin').removeAttribute('aria-busy');

@@ -24,7 +24,6 @@ from datetime import datetime, timedelta
 
 from itsdangerous import TimestampSigner
 
-# Importing db loads .env, which is where SESSION_SECRET and the passwords live.
 from db import db
 from ist import IST
 
@@ -41,7 +40,7 @@ def check(label: str, condition: bool, detail: str = "") -> None:
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Follow nothing — the redirect itself is what most of these assertions read."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
@@ -153,9 +152,6 @@ def run_checks(base: str) -> None:
     check("logout redirects to /login", status == 303, f"status={status}")
     check("  -> Location: /login", headers.get("location") == "/login")
     check("  -> cookie deleted", "null" in headers.get("set-cookie", ""))
-    # Deliberately not asserting that the captured cookie stops working. Sessions
-    # are stateless: logout deletes the browser's copy, it cannot revoke a value
-    # already signed. IDLE_TIMEOUT is what bounds a stolen one.
 
     print("\n3. HX-Redirect instead of the login page in a row")
     hx = {"HX-Request": "true"}
@@ -171,7 +167,6 @@ def run_checks(base: str) -> None:
     check("expired non-htmx POST still 303", status == 303, f"status={status}")
     check("  -> Location: /login", headers.get("location") == "/login")
 
-    # Valid session, deliberately absent student: proves auth passed, writes nothing.
     status, headers, _ = request(
         base, "POST", "/entries", cookie=live, headers=hx,
         data={**entry, "student_id": "0" * 24},

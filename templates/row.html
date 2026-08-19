@@ -1,21 +1,9 @@
-{# One row, rendered by GET /entries/{date} and returned again by POST /entries.
-   `entry` is the saved document or None — every field reads through `or ''`, so
-   a student with no document renders grey with empty boxes.
-
-   data-status is the last state the server confirmed. The class is what is on
-   screen, which a tap changes before the save lands — so a failed save has
-   something true to revert to rather than the guess it just painted. #}
 
 <li id="row-{{ student._id }}"
     class="row is-{{ entry.status or 'unmarked' }}"
     data-status="{{ entry.status or 'unmarked' }}"
     hx-target="#row-{{ student._id }}"
     hx-swap="outerHTML"
-    {# Both buttons inherit this and resolve "closest li" to this same row, so a
-       second tap aborts the first tap's request instead of racing it. Without it
-       two POSTs are in flight at once and the one that lands last wins, which is
-       not necessarily the one she tapped last. Aborting fires htmx:sendAbort, not
-       htmx:sendError, so a superseded tap does not mark the row failed. #}
     hx-sync="closest li:replace"
     hx-vals='{"student_id": "{{ student._id }}", "date": "{{ date }}"}'>
   <span class="name">{{ student.name }}</span>
@@ -25,34 +13,10 @@
   <button class="absent" onclick="optimistic(this, 'absent')"
           hx-post="/entries" hx-vals='{"status": "absent"}'>absent</button>
 
-  {# Always in the markup, hidden until something saves. The toggle's swap brings
-     it back already visible; the inputs do not swap, so their handler reveals
-     this same span rather than building a second kind of tick. #}
   <span class="tick" {% if not saved %}hidden{% endif %}>✓</span>
 
-  {# Everything below the mark is shown by the status, not by a control of its
-     own. These five fields only mean anything for a student who was actually
-     there, so being marked present is the question the disclosure was asking —
-     there is no reason to ask it twice. Unmarked or absent, the row is the name
-     and the toggle and nothing else.
-
-     No [open] attribute and no script: the CSS keys off .is-present, which
-     optimistic() puts on the row at the moment of the tap and which the server's
-     own re-render carries back on the swap. That means the fields appear on the
-     tap rather than after the round trip, and a save that fails takes them away
-     again for free, because markFailed already reverts the row to data-status. #}
   <div class="more">
     <div class="more-body">
-      {# Topics and remark save themselves on blur, each sending only its own
-         field, so none of them can overwrite the toggle or each other.
-
-         hx-swap="none" because the reply is a whole row: swapping it while she is
-         typing in the next box would replace that box mid-word and take the focus
-         with it. The save still happens, and a failure still reaches markFailed.
-
-         hx-sync="this:replace" overrides the row's rule above. Inheriting it would
-         mean blurring a topic aborts an in-flight save of the toggle. Scoped to the
-         input, only a second save of the same box replaces the first. #}
       <input class="topic" name="slot_1" value="{{ entry.slot_1 or '' }}"
              placeholder="slot 1" autocomplete="off"
              hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
@@ -60,16 +24,6 @@
              placeholder="slot 2" autocomplete="off"
              hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
 
-      {# §3.4 — score over max_marks, one test a day. Same isolation as the topics
-         above: blur, no swap, synced to itself.
-
-         `or ''` is wrong for these two, because a legitimate score of 0 is falsy and
-         would render as an empty box. They test against none explicitly instead —
-         which also covers `entry` itself being None, since Undefined is not none.
-
-         Disabled and shown empty when the student is absent: you cannot score
-         someone who was not there. A disabled input is never submitted, so the
-         fields cannot save while the row is in that state either. #}
       {% set absent = entry.status == 'absent' %}
       <span class="marks-label" aria-hidden="true">Test Score</span>
       <input class="mark" name="score" type="number" inputmode="numeric"
@@ -84,9 +38,6 @@
              value="{{ '' if absent else (entry.max_marks if entry.max_marks is not none else '') }}"
              hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">
 
-      {# Was a second <details> nested inside the row, opened by a ✎ glyph, and
-         then a plain field inside the row's own disclosure. It is simply a field
-         now — there is nothing left to open. #}
       <input class="remark" name="remark" value="{{ entry.remark or '' }}"
              placeholder="Remark" aria-label="Remark" autocomplete="off"
              hx-post="/entries" hx-trigger="blur" hx-swap="none" hx-sync="this:replace">

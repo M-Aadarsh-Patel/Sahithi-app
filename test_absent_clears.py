@@ -18,15 +18,12 @@ from typing import Any
 
 from bson import ObjectId
 
-# Reuse the harness rather than restating it: same free port, same real HTTP,
-# same signed-cookie forgery. Importing is safe — test_session guards its own
-# entry point behind __main__.
 from test_session import forge, free_port, request, start_server
 from db import db
 from itsdangerous import TimestampSigner
 import os
 
-TEST_DATE = "2020-01-01"  # outside any real register
+TEST_DATE = "2020-01-01"
 FIELDS = ("slot_1", "slot_2", "remark", "score", "max_marks")
 
 ok = True
@@ -43,7 +40,7 @@ def entry_for(student_id: ObjectId) -> dict[str, Any] | None:
 
 
 def run_checks(base: str, student_id: ObjectId, cookie: str) -> None:
-    post = lambda data: request(  # noqa: E731
+    post = lambda data: request(
         base, "POST", "/entries", cookie=cookie,
         data={"student_id": str(student_id), "date": TEST_DATE, **data},
     )
@@ -60,8 +57,6 @@ def run_checks(base: str, student_id: ObjectId, cookie: str) -> None:
     assert entry is not None, "the entry was never created"
     check("all five are in the document", all(entry.get(f) not in (None, "") for f in FIELDS),
           str({f: entry.get(f) for f in FIELDS}))
-    # 0 is a legitimate score and must not be confused with "not set", so assert
-    # the value itself rather than truthiness.
     check("score stored as an int", entry.get("score") == 7, f"score={entry.get('score')!r}")
 
     print("\n2. marking absent clears them")
@@ -80,7 +75,7 @@ def run_checks(base: str, student_id: ObjectId, cookie: str) -> None:
     print("\n3. a status save still cannot wipe a field on its own")
     post({"status": "present"})
     post({"slot_1": "Trigonometry"})
-    post({"status": "present"})  # re-saving present must leave the topic alone
+    post({"status": "present"})
     entry = entry_for(student_id)
     assert entry is not None
     check("present does not clear", entry.get("slot_1") == "Trigonometry",
@@ -88,8 +83,6 @@ def run_checks(base: str, student_id: ObjectId, cookie: str) -> None:
 
 
 def main() -> None:
-    # A student that exists only for this run, so every write is keyed to an id
-    # no real entry can share.
     student_id = db.students.insert_one(
         {"name": "ZZ Test Student", "roll_no": 99999, "is_test_fixture": True}
     ).inserted_id

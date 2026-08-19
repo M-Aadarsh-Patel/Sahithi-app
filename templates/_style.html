@@ -1,130 +1,56 @@
-{# Shared design tokens and base type. Included by login, dashboard and entries.
-   Inlined rather than served as a static file because mounting StaticFiles would
-   mean editing main.py.
-
-   The two webfonts are opt-in, because neither is used by every page. Set the
-   flag before including this file:
-
-     {% set heading_font = true %}   Archivo — dashboard.html, entries.html
-     {% set icons        = true %}   Tabler  — dashboard.html only
-
-   Opt in rather than opt out on purpose. A page that forgets `icons` renders
-   empty boxes, which gets noticed within seconds; a page that forgets to opt
-   *out* pays for the font silently and forever. The second is what happened
-   here — login.html renders no icons and no Archivo glyphs (its only heading is
-   the logo image), and was still fetching 211KB of Tabler stylesheet and opening
-   two third-party connections on the app's first screen, usually on mobile
-   data. #}
 {% if heading_font %}
-{# Archivo at 500, 600 and 700 — medium for tile titles and control labels,
-   semibold for student names and the small caps captions, bold for headings.
-   600 joined when the name needed a real semibold: with only 500 and 700 on
-   the wire a font-weight of 600 rounds *up* to 700, so every "semibold" caption
-   in the app was quietly rendering bold. display=swap paints text in the
-   fallback immediately and swaps when Archivo lands, rather than holding it
-   invisible on a slow connection. The preconnects open the sockets early, since
-   the stylesheet and the font file come from different hosts. #}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&display=swap">
 {% endif %}
 {% if icons %}
-{# Tabler pinned to an exact version, not @latest: a CDN that silently moves
-   under the app is the same failure mode as an unpinned requirements.txt. #}
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css">
 {% endif %}
 <style>
   :root {
-    /* Dark, after the academy logo: a near-black field with off-white on it.
-       Warm-neutral rather than blue-black, and never pure #000 or #fff — a flat
-       black panel with pure white text glares in a dim room at 10 PM.
-       --paper is the page, --card the surface a row sits on. */
     --paper:          #100f0e;
     --card:           #1c1a18;
     --ink:            #f2efe9;
     --ink-soft:       #b3aca1;
-    /* Was #7d7669, which measured 3.9:1 on --card and 4.3:1 on --paper — under
-       the 4.5:1 floor on both. This is the placeholder colour for every text
-       input in the app and the colour of the dashboard's secondary lines, so it
-       is the one value in here that was failing on three screens at once rather
-       than on one. Lightened just far enough to clear the floor (4.6:1 on --card,
-       5.1:1 on --paper) and no further, so it still reads a clear step below
-       --ink-soft rather than competing with it. */
     --ink-faint:      #8b8377;
     --line:           #2f2c28;
-    /* Deliberately bright enough to outline a control against a card. This is
-       the border of an unmarked toggle: it has to say "empty", not "disabled",
-       so it stays a visible edge rather than fading into the surface. */
     --line-strong:    #6b655a;
 
-    /* Same semantic roles, retuned for a dark field. Both are dark enough to
-       carry white text as a filled button and light enough to read as an accent
-       against the page.
-
-       --terracotta keeps its name because entries.html and login.html reference
-       it, but on dark it is a rose red, not the logo's scarlet. The logo's red
-       is reserved for the logo — a student marked absent must not look like
-       branding, and the two side by side would fight. */
     --green:          #37854e;
     --green-tint:     #16261a;
     --terracotta:     #bd4a66;
     --terracotta-tint:#1a0b0f;
 
-    /* Past dates. Amber says "not today" without saying "error", and it is the
-       one hue with no competition from either the logo or the two states. */
     --amber:          #d9a441;
     --amber-tint:     #2a2113;
 
-    /* Headings only. The fallbacks are the body stack verbatim, so if Archivo is
-       slow or blocked the swap shifts weight and spacing, not the whole face. */
     --font-heading:   "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
     --focus:          #6ba3d0;
     --focus-ring:     0 0 0 3px rgba(107, 163, 208, .22);
 
-    /* On a dark field two near-black surfaces 1.1:1 apart do not read as
-       separate planes. A one-pixel lit top edge is what actually separates
-       them — it reads as a surface catching light, and costs no contrast. */
     --edge:           inset 0 1px 0 rgba(255, 255, 255, .05);
-    /* Two layers, not one: the tight contact shadow grounds the card, the wide
-       diffuse one is the light falling off around it. Either alone reads flat
-       or muddy; together they are what "raised" looks like on a dark field. */
     --lift:           0 1px 2px rgba(0, 0, 0, .45),
                       0 6px 20px rgba(0, 0, 0, .22);
-    /* The committed half of a toggle: fill plus a whisper of the same hue
-       spilling onto the card, plus the lit top edge a physical key would have.
-       Low alpha is the whole trick — this is a lamp, not a neon sign. */
     --glow-green:     0 2px 10px rgba(55, 133, 78, .30),
                       inset 0 1px 0 rgba(255, 255, 255, .12);
     --glow-rose:      0 2px 10px rgba(189, 74, 102, .32),
                       inset 0 1px 0 rgba(255, 255, 255, .12);
     --glow-amber:     0 2px 10px rgba(217, 164, 65, .28),
                       inset 0 1px 0 rgba(255, 255, 255, .12);
-    /* A colour, not a shadow — the other three are box-shadows a control wears,
-       this one is the logo's scarlet at the alpha of a pool of light, for the
-       radial behind the mark on the login screen. */
     --glow-brand:     rgba(237, 28, 36, .10);
 
-    /* The motion trio. One easing curve every entrance and settle uses, so a new
-       animation cannot drift into a feel of its own, and the two durations the
-       whole app moves at: --dur for a state change answering a tap, --dur-enter
-       for something arriving on screen. */
     --ease:           cubic-bezier(.22, .61, .36, 1);
     --dur:            .16s;
     --dur-enter:      .28s;
 
     --radius:         12px;
     --radius-sm:      9px;
-    /* 44px, not 40. The 40px floor is the minimum; a thumb at arm's length in a
-       noisy room wants the extra four. */
     --tap:            44px;
   }
 
-  /* Without this the browser paints its own controls light: the date input's
-     calendar glyph and its whole popup render as a white panel on a dark page.
-     One declaration fixes every native control at once. */
   :root { color-scheme: dark; }
 
   * { box-sizing: border-box; }
@@ -136,9 +62,6 @@
 
   body {
     margin: 0;
-    /* max() rather than a bare inset, so the padding never shrinks below 1rem
-       on a phone without a notch. The bottom pair keeps the last row clear of
-       the home indicator. */
     padding:
       1.1rem
       max(1rem, env(safe-area-inset-right))
@@ -149,22 +72,10 @@
     font: 400 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* clip, not hidden. Both stop sideways scroll, but hidden makes body a
-       scroll container, which silently breaks position:sticky for anything
-       added later. clip has no such side effect. */
     overflow-x: clip;
-    /* iOS paints a grey box over any tapped control. Every control here has its
-       own :active state, so the default is noise. */
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* The page is lit from above. A wide, barely-there pool of warm light at the
-     top of the viewport is what keeps the near-black field from reading as a
-     void — surfaces below it catch --edge and --lift and sit in space instead
-     of on a flat matte. Fixed, so it does not scroll with the list; z-index -1
-     keeps it above the page background and behind every control (the same
-     mechanism the login page's lamp relies on — and login's own body::before
-     simply overrides this one with its staged version). */
   body::before {
     content: "";
     position: fixed;
@@ -178,30 +89,14 @@
     z-index: -1;
   }
 
-  /* Every navigation in this app is a full page load, so without this the next
-     screen simply replaces this one in a single frame. 200ms of fade is enough
-     to read as a transition between two screens rather than a cut, and short
-     enough that nobody waits on it. Opacity only — nothing moves, so it costs no
-     layout and cannot fight the per-page entrances underneath it. */
   @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
   body { animation: page-in .2s ease-out; }
 
-  /* textarea belongs here as much as input does. Left out, it keeps the UA
-     default — monospace at 13.3px — so the onboarding form's notes field was the
-     one control in the app in a different typeface, and the one under the 16px
-     floor the next rule exists to hold. It was invisible for as long as no page
-     had a textarea. */
   input, textarea, button, summary { font: inherit; color: inherit; }
-  /* Anything below 16px makes iOS Safari zoom the page on focus, which on this
-     app means the row jumps away mid-typing. */
   input, textarea { font-size: max(1rem, 16px); caret-color: var(--focus); }
 
   ::selection { background: rgba(107, 163, 208, .3); color: var(--ink); }
 
-  /* Chrome fills a remembered field with its own near-white background, which
-     on this page is a bright slab with invisible text. There is no property to
-     set it directly, so an inset shadow the size of the field stands in for the
-     background colour. */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus {
@@ -211,8 +106,6 @@
 
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-  /* Motion here is only ever confirmation of a tap. Anyone who has asked the OS
-     to stop moving things should get the state change with none of the travel. */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       transition-duration: .01ms !important;
